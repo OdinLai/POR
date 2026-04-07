@@ -1,59 +1,117 @@
 {% extends "layout.html" %}
-{% block title %}管理進度{% endblock %}
+{% block title %}看板管理系統{% endblock %}
 
 {% block content %}
-<h1>管理進度</h1>
-<p>點擊按鈕執行狀態轉移。序號為動態編號，資料清除後會自動重新排列。</p>
+<style>
+    .manage-wrapper {
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 0 20px;
+    }
+    .config-card {
+        background: #f1f8ff;
+        border: 1px solid #c8e1ff;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .config-card h3 { margin: 0; color: #0366d6; font-size: 1.2rem; }
+    .title-form { display: flex; gap: 10px; }
+    .title-form input { 
+        padding: 8px 12px; 
+        border: 1px solid #ddd; 
+        border-radius: 4px; 
+        width: 300px;
+    }
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .data-table th {
+        background-color: #e3f2fd; /* 淺藍色 */
+        color: #333;
+        text-align: left;
+        padding: 15px;
+        border-bottom: 2px solid #2196F3;
+    }
+    .data-table td {
+        padding: 15px;
+        border-bottom: 1px solid #eee;
+    }
+    .data-table tr:nth-child(even) { background-color: #f9f9f9; }
+    .btn {
+        padding: 6px 12px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.8; }
+    .btn-save { background-color: #28a745; color: white; }
+    .btn-action { background-color: #007bff; color: white; }
+    .remark-text { font-size: 0.85rem; color: #666; display: block; margin-top: 4px; }
+</style>
 
-<table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
-    <thead>
-        <tr style="background: #eee; text-align: left;">
-            <th style="padding: 15px;">序號</th>
-            <th style="padding: 15px;">內容</th>
-            <th style="padding: 15px;">當前位置</th>
-            <th style="padding: 15px;">操作</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for item in items %}
-        <tr style="border-bottom: 1px solid #eee;">
-            <td style="padding: 15px; font-weight: bold; color: #ff9800;">
-                {{ "%02d"|format(loop.index) }}
-            </td>
-            <td style="padding: 15px;">
-                <div style="font-weight: bold;">{{ item.content }}</div>
-                {% if item.remark %}
-                <div style="font-size: 0.85rem; color: #666; margin-top: 5px;">備註: {{ item.remark }}</div>
-                {% endif %}
-            </td>
-            <td style="padding: 15px;">
-                <span style="background: #e8f0fe; color: #1a73e8; padding: 5px 10px; border-radius: 5px; font-size: 0.9rem;">
-                    {{ item.current_stage }}
-                </span>
-            </td>
-            <td style="padding: 15px;">
-                {% if item.current_stage == 'ORDER' and perms.can_transfer_arrival %}
-                    <button onclick="action('{{ item.id }}', 'ARRIVAL')" style="background: var(--success); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">轉移至到貨</button>
-                {% elif item.current_stage == 'ARRIVAL' and perms.can_transfer_production %}
-                    <button onclick="action('{{ item.id }}', 'PRODUCTION')" style="background: var(--warning); color: #333; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">轉移至製作</button>
-                {% elif item.current_stage == 'PRODUCTION' and perms.can_transfer_delivery %}
-                    <button onclick="action('{{ item.id }}', 'DELIVERY')" style="background: var(--info); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">轉移至出庫</button>
-                {% elif item.current_stage == 'DELIVERY' and perms.can_clear_delivery %}
-                    <button onclick="action('{{ item.id }}', 'CLEAR')" style="background: var(--danger); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">清除並記錄日誌</button>
-                {% else %}
-                    <span style="color: #999; font-size: 0.9rem;">無權限或已完成</span>
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="manage-wrapper">
+    <div class="config-card">
+        <h3>系統設定</h3>
+        <form action="{{ url_for('update_title') }}" method="POST" class="title-form">
+            <input type="text" name="new_title" value="{{ site_title }}" placeholder="請輸入看板標題">
+            <button type="submit" class="btn btn-save">更新看板標題</button>
+        </form>
+    </div>
+
+    <h2>當前項目管理</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width: 80px;">序號</th>
+                <th>內容</th>
+                <th>當前階段</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td style="font-weight: bold; color: #1a73e8;">{{ "%02d"|format(loop.index) }}</td>
+                <td>
+                    <div style="font-weight: 500;">{{ item.cabinet_no }}</div>
+                    {% if item.remark %}<span class="remark-text">備註: {{ item.remark }}</span>{% endif %}
+                </td>
+                <td>
+                    <span style="background: #e1f5fe; color: #0288d1; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">
+                        {{ item.current_stage }}
+                    </span>
+                </td>
+                <td>
+                    {% if item.current_stage == 'ORDER' %}
+                        <button onclick="action('{{ item.id }}', 'ARRIVAL')" class="btn btn-action">轉移至到貨</button>
+                    {% elif item.current_stage == 'ARRIVAL' %}
+                        <button onclick="action('{{ item.id }}', 'PRODUCTION')" class="btn btn-action" style="background:#ffc107; color:#333;">轉移至製作</button>
+                    {% elif item.current_stage == 'PRODUCTION' %}
+                        <button onclick="action('{{ item.id }}', 'DELIVERY')" class="btn btn-action" style="background:#17a2b8;">轉移至出庫</button>
+                    {% elif item.current_stage == 'DELIVERY' %}
+                        <button onclick="action('{{ item.id }}', 'CLEAR')" class="btn btn-action" style="background:#dc3545;">清除並記錄</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
 <script>
 function action(id, target) {
-    if (target === 'CLEAR' && !confirm('確定要清除此筆資料並記錄至日誌嗎？\n此動作不可復原。')) {
-        return;
-    }
+    if (target === 'CLEAR' && !confirm('確定要清除此筆資料並記錄至日誌嗎？')) return;
     
     fetch('/api/transfer', {
         method: 'POST',
@@ -62,8 +120,7 @@ function action(id, target) {
     }).then(res => res.json())
     .then(data => {
         if (data.success) {
-            showModal(data.message);
-            setTimeout(() => location.reload(), 1500);
+            location.reload();
         } else {
             alert('錯誤: ' + data.message);
         }

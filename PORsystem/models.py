@@ -54,3 +54,9 @@ class HistoryLog(db.Model):
     cleared_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     log_year = db.Column(db.Integer) # 用於年度分割查詢索引
+
+class SystemConfig(db.Model):
+    """系統配置：儲存看板標題等設定"""
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False)
+    value = db.Column(db.Text)

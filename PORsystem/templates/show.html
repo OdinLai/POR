@@ -5,28 +5,71 @@
     <meta http-equiv="refresh" content="30">
     <title>投影看板 - Show</title>
     <style>
-        body { margin: 0; background: #000; color: #fff; font-family: 'Microsoft JhengHei', sans-serif; overflow: hidden; }
-        .header { height: 8vh; background: #111; color: #aaa; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border-bottom: 2px solid #333; }
-        .container { display: flex; height: 92vh; width: 100vw; }
-        .column { flex: 1; border-right: 1px solid #333; display: flex; flex-direction: column; overflow-y: auto; }
-        .column:last-child { border-right: none; }
-        .column-header { background: #222; padding: 15px; text-align: center; font-size: 1.8rem; font-weight: bold; border-bottom: 2px solid #444; }
-        .item { display: flex; border-bottom: 1px solid #222; padding: 10px; min-height: 50px; align-items: center; font-size: 1.4rem; }
-        .seq { width: 3rem; color: #ff9800; font-family: monospace; font-weight: bold; text-align: center; margin-right: 10px; }
-        .content { flex: 1; word-wrap: break-word; }
-        .date { color: #4caf50; font-size: 1.1rem; margin-left: 10px; min-width: 4rem; }
-        
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: #111; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-    </style>
+    :root {
+        --header-blue: #e3f2fd;
+        --border-color: #eee;
+        --text-main: #333;
+        --text-muted: #666;
+    }
+    body { 
+        margin: 0; background: #fff; color: var(--text-main); 
+        font-family: 'Microsoft JhengHei', sans-serif; overflow: hidden; 
+    }
+    h1 {
+        background: linear-gradient(135deg, #2196F3, #00BCD4);
+        color: white;
+        text-align: center;
+        padding: 10px 0;
+        margin: 0;
+        font-size: 2.2rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .container { display: flex; height: calc(100vh - 60px); width: 100vw; }
+    .column { 
+        flex: 1; 
+        border-right: 2px solid var(--border-color); 
+        display: flex; 
+        flex-direction: column; 
+    }
+    .column:last-child { border-right: none; }
+    .column-header { 
+        background: var(--header-blue); 
+        padding: 15px; 
+        text-align: center; 
+        font-size: 1.5rem; 
+        font-weight: bold; 
+        color: #0d47a1;
+        border-bottom: 3px solid #2196F3;
+    }
+    .item-list { flex-grow: 1; overflow-y: auto; }
+    .item { 
+        display: flex; 
+        padding: 12px 10px; 
+        align-items: center; 
+        border-bottom: 1px solid var(--border-color);
+    }
+    /* 灰白相間 */
+    .item:nth-child(even) { background-color: #f9f9f9; }
+    
+    .seq { 
+        width: 2.5rem; 
+        color: #1a73e8; 
+        font-weight: bold; 
+        text-align: center; 
+        margin-right: 10px;
+        font-size: 1.2rem;
+    }
+    .content { flex: 1; }
+    .cabinet { font-size: 1.4rem; font-weight: 500; }
+    .remark { font-size: 0.9rem; color: var(--text-muted); font-style: italic; display: block; }
+</style>
 </head>
 <body>
-    <div class="header">投影看板系統</div>
+    <h1>{{ site_title }}</h1>
     <div class="container">
         {% set headers = [('ORDER', '訂貨'), ('ARRIVAL', '到貨'), ('PRODUCTION', '製作'), ('DELIVERY', '出庫')] %}
         
-        {# 先建立一個全域查找表來獲取每筆資料的推薦序號 #}
+        {# 序號映射 #}
         {% set seq_map = {} %}
         {% for item in all_items %}
             {% set _ = seq_map.update({item.id: loop.index}) %}
@@ -35,23 +78,17 @@
         {% for key, label in headers %}
         <div class="column">
             <div class="column-header">{{ label }}</div>
-            {% for item in data[key] %}
-            <div class="item">
-                <span class="seq">{{ "%02d"|format(seq_map[item.id]) }}</span>
-                <div class="content">
-                    <div>{{ item.content }}</div>
-                    {% if item.remark %}
-                    <div style="font-size: 1rem; color: #ff9800; opacity: 0.8;">[{{ item.remark }}]</div>
-                    {% endif %}
+            <div class="item-list">
+                {% for item in data[key] %}
+                <div class="item">
+                    <span class="seq">{{ "%02d"|format(seq_map[item.id]) }}</span>
+                    <div class="content">
+                        <span class="cabinet">{{ item.cabinet_no }}</span>
+                        {% if item.remark %}<span class="remark">{{ item.remark }}</span>{% endif %}
+                    </div>
                 </div>
-                <span class="date">
-                    {% if key == 'ORDER' %}{{ item.order_date or '' }}{% endif %}
-                    {% if key == 'ARRIVAL' %}{{ item.arrival_date or '' }}{% endif %}
-                    {% if key == 'PRODUCTION' %}{{ item.production_date or '' }}{% endif %}
-                    {% if key == 'DELIVERY' %}{{ item.delivery_date or '' }}{% endif %}
-                </span>
+                {% endfor %}
             </div>
-            {% endfor %}
         </div>
         {% endfor %}
     </div>

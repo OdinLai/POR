@@ -15,7 +15,7 @@ if errorlevel 1 (
 
 echo [2/2] Launching Chrome in Kiosk Mode...
 echo If Chrome does not open, please make sure it is installed.
-start chrome --kiosk "http://127.0.0.1:%PORT%/show" --no-first-run --force-device-scale-factor=1.0
+start chrome --kiosk "http://127.0.0.1:%PORT%/show" --user-data-dir="%TEMP%\POR_Chrome_Profile" --no-first-run --force-device-scale-factor=1.0
 
 echo.
 echo ==========================================

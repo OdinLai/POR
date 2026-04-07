@@ -1,16 +1,29 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-from models import db, User, Permission, SignboardItem, HistoryLog
+from models import db, User, Permission, SignboardItem, HistoryLog, SystemConfig
+# ... 其他導入不變
+
+# 輔助函式：獲取系統配置
+def get_config(key, default=None):
+    config = SystemConfig.query.filter_by(key=key).first()
+    return config.value if config else default
+
+@app.context_processor
+def inject_config():
+    return {'site_title': get_config('site_title', '中國到貨看板系統')}
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import os
 
-app = Flask(__name__)
-# 修正：在 Docker 環境下使用相對路徑更穩定，配合 os.makedirs 確保目錄存在
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database/projection.sqlite'
+app = Flask(__name__, instance_relative_config=True)
+# 確保 instance 資料夾存在 (Flask 會自動尋找 app 根目錄下的 instance 目錄)
+try:
+    os.makedirs(app.instance_path, exist_ok=True)
+except OSError:
+    pass
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.instance_path, 'projection.sqlite')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'signboard-secret-key-12345'
-# 確保資料夾存在
-os.makedirs('database', exist_ok=True)
 
 db.init_app(app)
 
@@ -55,6 +68,22 @@ def login():
     
     flash('帳號或密碼錯誤')
     return redirect(url_for('index'))
+
+@app.route('/update_title', methods=['POST'])
+def update_title():
+    if not session.get('username'):
+        return redirect(url_for('login'))
+    
+    new_title = request.form.get('new_title')
+    if new_title:
+        config = SystemConfig.query.filter_by(key='site_title').first()
+        if not config:
+            config = SystemConfig(key='site_title', value=new_title)
+            db.session.add(config)
+        else:
+            config.value = new_title
+        db.session.commit()
+    return redirect(url_for('manage'))
 
 @app.route('/logout')
 def logout():
@@ -142,7 +171,7 @@ def api_transfer():
             db.session.add(log_db)
             
             # 2. 同步寫入年度實體日誌檔案 (.txt)
-            log_file_path = f'database/log_{log_year}.txt'
+            log_file_path = os.path.join(app.instance_path, f'log_{log_year}.txt')
             with open(log_file_path, 'a', encoding='utf-8') as f:
                 log_entry = (
                     f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
@@ -258,8 +287,7 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         # 初始化管理員邏輯 (同前)
-        admin = User.query.filter_by(username='admin').first()
-        if not admin:
+        if not User.query.filter_by(username='admin').first():
             admin_pwd = generate_password_hash('888888')
             admin = User(username='admin', password_hash=admin_pwd, is_admin=True)
             db.session.add(admin)

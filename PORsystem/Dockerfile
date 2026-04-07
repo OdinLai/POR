@@ -2,12 +2,12 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
+# 安裝 rclone 與必要依賴
 RUN apt-get update && apt-get install -y \
     curl \
+    unzip \
+    rclone \
     && rm -rf /var/lib/apt/lists/*
-
-# 安裝 rclone 用於備份
-RUN curl https://rclone.org/install.sh | bash
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

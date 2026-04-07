@@ -28,6 +28,7 @@ class SignboardItem(db.Model):
     """看板即時資料：負責 Show 頁面的核心顯示"""
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
+    remark = db.Column(db.Text) # 備註 (選填)
     
     # 目前階段: ORDER, ARRIVAL, PRODUCTION, DELIVERY
     current_stage = db.Column(db.String(20), default='ORDER')
@@ -44,6 +45,7 @@ class HistoryLog(db.Model):
     """歷史日誌：資料清除後的存檔紀錄"""
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text)
+    remark = db.Column(db.Text)
     
     # 完整的生命週期時間線 (JSON 字串)
     timeline = db.Column(db.JSON) 

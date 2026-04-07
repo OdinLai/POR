@@ -38,7 +38,12 @@
             {% for item in data[key] %}
             <div class="item">
                 <span class="seq">{{ "%02d"|format(seq_map[item.id]) }}</span>
-                <div class="content">{{ item.content }}</div>
+                <div class="content">
+                    <div>{{ item.content }}</div>
+                    {% if item.remark %}
+                    <div style="font-size: 1rem; color: #ff9800; opacity: 0.8;">[{{ item.remark }}]</div>
+                    {% endif %}
+                </div>
                 <span class="date">
                     {% if key == 'ORDER' %}{{ item.order_date or '' }}{% endif %}
                     {% if key == 'ARRIVAL' %}{{ item.arrival_date or '' }}{% endif %}

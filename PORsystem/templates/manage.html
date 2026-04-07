@@ -20,7 +20,12 @@
             <td style="padding: 15px; font-weight: bold; color: #ff9800;">
                 {{ "%02d"|format(loop.index) }}
             </td>
-            <td style="padding: 15px;">{{ item.content }}</td>
+            <td style="padding: 15px;">
+                <div style="font-weight: bold;">{{ item.content }}</div>
+                {% if item.remark %}
+                <div style="font-size: 0.85rem; color: #666; margin-top: 5px;">備註: {{ item.remark }}</div>
+                {% endif %}
+            </td>
             <td style="padding: 15px;">
                 <span style="background: #e8f0fe; color: #1a73e8; padding: 5px 10px; border-radius: 5px; font-size: 0.9rem;">
                     {{ item.current_stage }}

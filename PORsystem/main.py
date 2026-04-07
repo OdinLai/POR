@@ -134,6 +134,7 @@ def api_transfer():
             }
             log_db = HistoryLog(
                 content=item.content,
+                remark=item.remark,
                 timeline=timeline_data,
                 cleared_by=session['username'],
                 log_year=log_year
@@ -145,7 +146,7 @@ def api_transfer():
             with open(log_file_path, 'a', encoding='utf-8') as f:
                 log_entry = (
                     f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
-                    f"內容:{item.content} | 時程: {timeline_data} | 操作者: {session['username']}\n"
+                    f"內容:{item.content} | 備註:{item.remark or ''} | 時程: {timeline_data} | 操作者: {session['username']}\n"
                 )
                 f.write(log_entry)
 
@@ -231,9 +232,10 @@ def add_item():
         return redirect(url_for('settings_page'))
     
     content = request.form.get('content')
+    remark = request.form.get('remark')
     now_str = datetime.now().strftime('%m/%d')
     
-    item = SignboardItem(content=content, current_stage='ORDER', order_date=now_str)
+    item = SignboardItem(content=content, remark=remark, current_stage='ORDER', order_date=now_str)
     db.session.add(item)
     db.session.commit()
     flash(f'成功新增一筆資料')

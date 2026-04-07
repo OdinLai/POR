@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block title %}新增資料{% endblock %}
+
+{% block content %}
+<h1>新增看板項目</h1>
+
+<div style="background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+    <form action="/add_item" method="post">
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: bold;">顯示序號 (2位數, 如 01, 23):</label>
+            <input type="text" name="sequence_id" maxlength="2" pattern="[0-9]{2}" placeholder="01" required style="width: 100px;">
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: bold;">內容描述:</label>
+            <textarea name="content" rows="5" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1.1rem; box-sizing: border-box;"></textarea>
+        </div>
+        
+        <button type="submit" style="background: var(--success); font-size: 1.5rem;">新增至 [訂貨] 欄位</button>
+    </form>
+</div>
+{% endblock %}

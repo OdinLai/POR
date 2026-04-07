@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+{% block title %}用戶管理{% endblock %}
+
+{% block content %}
+<h1>用戶管理與權限矩陣</h1>
+
+<div style="background: white; padding: 2rem; border-radius: 15px; margin-bottom: 2rem;">
+    <h3>新增用戶</h3>
+    <form action="/users/add" method="post" style="display: flex; gap: 10px;">
+        <input type="text" name="username" placeholder="用戶名" required style="flex: 1;">
+        <button type="submit" style="width: auto; background: var(--success); padding: 10px 30px;">建立 (預設密碼 666666)</button>
+    </form>
+</div>
+
+<h3>權限二維表格</h3>
+<form action="/users/update_permissions" method="post">
+    <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden;">
+        <thead>
+            <tr style="background: #202124; color: white;">
+                <th style="padding: 15px; text-align: left;">用戶名</th>
+                <th style="padding: 15px;">新增訂貨</th>
+                <th style="padding: 15px;">轉移到貨</th>
+                <th style="padding: 15px;">轉移製作</th>
+                <th style="padding: 15px;">轉移出庫</th>
+                <th style="padding: 15px;">清空出庫</th>
+                <th style="padding: 15px;">管理員</th>
+                <th style="padding: 15px;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr style="border-bottom: 1px solid #eee; text-align: center;">
+                <td style="padding: 15px; text-align: left; font-weight: bold;">{{ u.username }}</td>
+                <input type="hidden" name="user_id" value="{{ u.id }}">
+                {% if u.username != 'admin' %}
+                    {% set p = u.permissions %}
+                    <td style="padding: 15px;"><input type="checkbox" name="can_add_{{ u.id }}" {% if p.can_add_order %}checked{% endif %}></td>
+                    <td style="padding: 15px;"><input type="checkbox" name="can_arrival_{{ u.id }}" {% if p.can_transfer_arrival %}checked{% endif %}></td>
+                    <td style="padding: 15px;"><input type="checkbox" name="can_production_{{ u.id }}" {% if p.can_transfer_production %}checked{% endif %}></td>
+                    <td style="padding: 15px;"><input type="checkbox" name="can_delivery_{{ u.id }}" {% if p.can_transfer_delivery %}checked{% endif %}></td>
+                    <td style="padding: 15px;"><input type="checkbox" name="can_clear_{{ u.id }}" {% if p.can_clear_delivery %}checked{% endif %}></td>
+                    <td style="padding: 15px;"><input type="checkbox" name="is_admin_{{ u.id }}" {% if u.is_admin %}checked{% endif %}></td>
+                    <td style="padding: 15px;">
+                        <a href="/users/delete/{{ u.id }}" style="color: var(--danger); text-decoration: none;" onclick="return confirm('確定刪除？')">刪除</a>
+                    </td>
+                {% else %}
+                    <td colspan="7" style="color: #999; font-style: italic;">超級管理員 (全權限保護)</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <button type="submit" style="background: var(--primary); margin-top: 20px; font-size: 1.5rem;">儲存所有權限變更</button>
+</form>
+{% endblock %}

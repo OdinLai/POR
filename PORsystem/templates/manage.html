@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+{% block title %}管理進度{% endblock %}
+
+{% block content %}
+<h1>管理進度</h1>
+<p>點擊按鈕執行狀態轉移，系統將自動標註日期。</p>
+
+<table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+    <thead>
+        <tr style="background: #eee; text-align: left;">
+            <th style="padding: 15px;">序號</th>
+            <th style="padding: 15px;">內容</th>
+            <th style="padding: 15px;">當前位置</th>
+            <th style="padding: 15px;">操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 15px; font-weight: bold; color: #ff9800;">{{ item.sequence_id }}</td>
+            <td style="padding: 15px;">{{ item.content }}</td>
+            <td style="padding: 15px;">
+                <span style="background: #e8f0fe; color: #1a73e8; padding: 5px 10px; border-radius: 5px; font-size: 0.9rem;">
+                    {{ item.current_stage }}
+                </span>
+            </td>
+            <td style="padding: 15px;">
+                {% if item.current_stage == 'ORDER' and perms.can_transfer_arrival %}
+                    <button onclick="action({{ item.id }}, 'ARRIVAL')" style="background: var(--success); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">轉移至到貨</button>
+                {% elif item.current_stage == 'ARRIVAL' and perms.can_transfer_production %}
+                    <button onclick="action({{ item.id }}, 'PRODUCTION')" style="background: var(--warning); color: #333; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">轉移至製作</button>
+                {% elif item.current_stage == 'PRODUCTION' and perms.can_transfer_delivery %}
+                    <button onclick="action({{ item.id }}, 'DELIVERY')" style="background: var(--info); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">轉移至出庫</button>
+                {% elif item.current_stage == 'DELIVERY' and perms.can_clear_delivery %}
+                    <button onclick="action({{ item.id }}, 'CLEAR')" style="background: var(--danger); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">清除並記錄日誌</button>
+                {% else %}
+                    <span style="color: #999; font-size: 0.9rem;">無權限或已完成</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+function action(id, target) {
+    fetch('/api/transfer', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: id, target: target})
+    }).then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showModal(data.message);
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            alert('錯誤: ' + data.message);
+        }
+    });
+}
+</script>
+{% endblock %}

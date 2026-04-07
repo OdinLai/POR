@@ -5,9 +5,12 @@ from datetime import datetime
 import os
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database/projection.sqlite'
+# 使用相對路徑，確保在 /app 工作目錄下能正確讀取 volume 掛載的 database 資料夾
+basedir = os.path.abspath(os.path.dirname(__file__))
+db_path = os.path.join(basedir, 'database', 'projection.sqlite')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'signboard-secret-key-12345' # 建議之後改為 .env 讀取
+app.config['SECRET_KEY'] = 'signboard-secret-key-12345'
 
 # 確保資料夾存在
 os.makedirs('database', exist_ok=True)

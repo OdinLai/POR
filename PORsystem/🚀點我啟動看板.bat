@@ -7,7 +7,7 @@ docker-compose up -d
 
 echo Waiting for the web service to be ready on port %PORT%...
 :check_ready
-curl -s --max-time 1 http://localhost:%PORT%/show >nul 2>&1
+curl -s --max-time 1 http://127.0.0.1:%PORT%/show >nul 2>&1
 if errorlevel 1 (
     timeout /t 2 /nobreak >nul
     goto check_ready
@@ -15,7 +15,7 @@ if errorlevel 1 (
 
 echo [2/2] Launching Chrome in Kiosk Mode...
 echo If Chrome does not open, please make sure it is installed.
-start chrome --kiosk "http://localhost:%PORT%/show" --no-first-run --force-device-scale-factor=1.0
+start chrome --kiosk "http://127.0.0.1:%PORT%/show" --no-first-run --force-device-scale-factor=1.0
 
 echo.
 echo ==========================================

@@ -1,21 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from models import db, User, Permission, SignboardItem, HistoryLog, SystemConfig
-# ... 其他導入不變
-
-# 輔助函式：獲取系統配置
-def get_config(key, default=None):
-    config = SystemConfig.query.filter_by(key=key).first()
-    return config.value if config else default
-
-@app.context_processor
-def inject_config():
-    return {'site_title': get_config('site_title', '中國到貨看板系統')}
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import os
 
 app = Flask(__name__, instance_relative_config=True)
-# 確保 instance 資料夾存在 (Flask 會自動尋找 app 根目錄下的 instance 目錄)
+# 確保 instance 資料夾存在
 try:
     os.makedirs(app.instance_path, exist_ok=True)
 except OSError:
@@ -26,6 +16,15 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'signboard-secret-key-12345'
 
 db.init_app(app)
+
+# 輔助函式：獲取系統配置
+def get_config(key, default=None):
+    config = SystemConfig.query.filter_by(key=key).first()
+    return config.value if config else default
+
+@app.context_processor
+def inject_config():
+    return {'site_title': get_config('site_title', '中國到貨看板系統')}
 
 # 初始化資料庫
 @app.before_first_request

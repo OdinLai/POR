@@ -3,7 +3,7 @@
 
 {% block content %}
 <h1>管理進度</h1>
-<p>點擊按鈕執行狀態轉移，系統將自動標註日期。</p>
+<p>點擊按鈕執行狀態轉移。序號為動態編號，資料清除後會自動重新排列。</p>
 
 <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
     <thead>
@@ -17,7 +17,9 @@
     <tbody>
         {% for item in items %}
         <tr style="border-bottom: 1px solid #eee;">
-            <td style="padding: 15px; font-weight: bold; color: #ff9800;">{{ item.sequence_id }}</td>
+            <td style="padding: 15px; font-weight: bold; color: #ff9800;">
+                {{ "%02d"|format(loop.index) }}
+            </td>
             <td style="padding: 15px;">{{ item.content }}</td>
             <td style="padding: 15px;">
                 <span style="background: #e8f0fe; color: #1a73e8; padding: 5px 10px; border-radius: 5px; font-size: 0.9rem;">
@@ -26,13 +28,13 @@
             </td>
             <td style="padding: 15px;">
                 {% if item.current_stage == 'ORDER' and perms.can_transfer_arrival %}
-                    <button onclick="action({{ item.id }}, 'ARRIVAL')" style="background: var(--success); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">轉移至到貨</button>
+                    <button onclick="action('{{ item.id }}', 'ARRIVAL')" style="background: var(--success); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">轉移至到貨</button>
                 {% elif item.current_stage == 'ARRIVAL' and perms.can_transfer_production %}
-                    <button onclick="action({{ item.id }}, 'PRODUCTION')" style="background: var(--warning); color: #333; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">轉移至製作</button>
+                    <button onclick="action('{{ item.id }}', 'PRODUCTION')" style="background: var(--warning); color: #333; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">轉移至製作</button>
                 {% elif item.current_stage == 'PRODUCTION' and perms.can_transfer_delivery %}
-                    <button onclick="action({{ item.id }}, 'DELIVERY')" style="background: var(--info); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">轉移至出庫</button>
+                    <button onclick="action('{{ item.id }}', 'DELIVERY')" style="background: var(--info); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">轉移至出庫</button>
                 {% elif item.current_stage == 'DELIVERY' and perms.can_clear_delivery %}
-                    <button onclick="action({{ item.id }}, 'CLEAR')" style="background: var(--danger); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">清除並記錄日誌</button>
+                    <button onclick="action('{{ item.id }}', 'CLEAR')" style="background: var(--danger); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">清除並記錄日誌</button>
                 {% else %}
                     <span style="color: #999; font-size: 0.9rem;">無權限或已完成</span>
                 {% endif %}
@@ -44,6 +46,10 @@
 
 <script>
 function action(id, target) {
+    if (target === 'CLEAR' && !confirm('確定要清除此筆資料並記錄至日誌嗎？\n此動作不可復原。')) {
+        return;
+    }
+    
     fetch('/api/transfer', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},

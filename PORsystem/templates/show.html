@@ -16,7 +16,6 @@
         .content { flex: 1; word-wrap: break-word; }
         .date { color: #4caf50; font-size: 1.1rem; margin-left: 10px; min-width: 4rem; }
         
-        /* 滾動條美化 */
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: #111; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
@@ -26,18 +25,25 @@
     <div class="header">投影看板系統</div>
     <div class="container">
         {% set headers = [('ORDER', '訂貨'), ('ARRIVAL', '到貨'), ('PRODUCTION', '製作'), ('DELIVERY', '出庫')] %}
+        
+        {# 先建立一個全域查找表來獲取每筆資料的推薦序號 #}
+        {% set seq_map = {} %}
+        {% for item in all_items %}
+            {% set _ = seq_map.update({item.id: loop.index}) %}
+        {% endfor %}
+
         {% for key, label in headers %}
         <div class="column">
             <div class="column-header">{{ label }}</div>
             {% for item in data[key] %}
             <div class="item">
-                <span class="seq">{{ item.sequence_id }}</span>
+                <span class="seq">{{ "%02d"|format(seq_map[item.id]) }}</span>
                 <div class="content">{{ item.content }}</div>
                 <span class="date">
-                    {% if key == 'ORDER' %}{{ item.order_date }}{% endif %}
-                    {% if key == 'ARRIVAL' %}{{ item.arrival_date }}{% endif %}
-                    {% if key == 'PRODUCTION' %}{{ item.production_date }}{% endif %}
-                    {% if key == 'DELIVERY' %}{{ item.delivery_date }}{% endif %}
+                    {% if key == 'ORDER' %}{{ item.order_date or '' }}{% endif %}
+                    {% if key == 'ARRIVAL' %}{{ item.arrival_date or '' }}{% endif %}
+                    {% if key == 'PRODUCTION' %}{{ item.production_date or '' }}{% endif %}
+                    {% if key == 'DELIVERY' %}{{ item.delivery_date or '' }}{% endif %}
                 </span>
             </div>
             {% endfor %}

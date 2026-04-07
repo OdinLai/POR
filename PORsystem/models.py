@@ -27,7 +27,6 @@ class Permission(db.Model):
 class SignboardItem(db.Model):
     """看板即時資料：負責 Show 頁面的核心顯示"""
     id = db.Column(db.Integer, primary_key=True)
-    sequence_id = db.Column(db.String(10))  # 序號 (如 01, 02)
     content = db.Column(db.Text, nullable=False)
     
     # 目前階段: ORDER, ARRIVAL, PRODUCTION, DELIVERY
@@ -44,7 +43,6 @@ class SignboardItem(db.Model):
 class HistoryLog(db.Model):
     """歷史日誌：資料清除後的存檔紀錄"""
     id = db.Column(db.Integer, primary_key=True)
-    sequence_id = db.Column(db.String(10))
     content = db.Column(db.Text)
     
     # 完整的生命週期時間線 (JSON 字串)

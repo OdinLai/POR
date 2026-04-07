@@ -72,7 +72,8 @@ def admin_home():
 @app.route('/show')
 def show_page():
     """電視看板顯示頁面 (30秒刷新)"""
-    items = SignboardItem.query.all()
+    # 按照 ID 順序抓取所有看板內容
+    items = SignboardItem.query.order_by(SignboardItem.id.asc()).all()
     # 按階段分組
     data = {
         'ORDER': [i for i in items if i.current_stage == 'ORDER'],
@@ -80,7 +81,7 @@ def show_page():
         'PRODUCTION': [i for i in items if i.current_stage == 'PRODUCTION'],
         'DELIVERY': [i for i in items if i.current_stage == 'DELIVERY']
     }
-    return render_template('show.html', data=data)
+    return render_template('show.html', data=data, all_items=items)
 
 @app.route('/manage')
 def manage_page():
@@ -89,7 +90,8 @@ def manage_page():
         return redirect(url_for('index'))
     
     user = User.query.get(session['user_id'])
-    items = SignboardItem.query.all()
+    # 這裡也需要按照順序抓取，確保管理端看到的序號跟看板一致
+    items = SignboardItem.query.order_by(SignboardItem.id.asc()).all()
     return render_template('manage.html', items=items, perms=user.permissions)
 
 # --- API 與資料操作 ---
@@ -122,7 +124,7 @@ def api_transfer():
             item.current_stage = 'DELIVERY'
             item.delivery_date = now_str
         elif target == 'CLEAR' and perms.can_clear_delivery:
-            # 1. 寫入資料庫歷史表
+            # 1. 寫入資料庫歷史表 (移除 sequence_id)
             log_year = datetime.now().year
             timeline_data = {
                 'order': item.order_date,
@@ -131,7 +133,6 @@ def api_transfer():
                 'delivery': item.delivery_date
             }
             log_db = HistoryLog(
-                sequence_id=item.sequence_id,
                 content=item.content,
                 timeline=timeline_data,
                 cleared_by=session['username'],
@@ -144,8 +145,7 @@ def api_transfer():
             with open(log_file_path, 'a', encoding='utf-8') as f:
                 log_entry = (
                     f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
-                    f"序號:{item.sequence_id} | 內容:{item.content} | "
-                    f"時程: {timeline_data} | 操作者: {session['username']}\n"
+                    f"內容:{item.content} | 時程: {timeline_data} | 操作者: {session['username']}\n"
                 )
                 f.write(log_entry)
 
@@ -230,14 +230,13 @@ def add_item():
         flash('您沒有新增訂單的權限')
         return redirect(url_for('settings_page'))
     
-    seq = request.form.get('sequence_id')
     content = request.form.get('content')
     now_str = datetime.now().strftime('%m/%d')
     
-    item = SignboardItem(sequence_id=seq, content=content, current_stage='ORDER', order_date=now_str)
+    item = SignboardItem(content=content, current_stage='ORDER', order_date=now_str)
     db.session.add(item)
     db.session.commit()
-    flash(f'成功新增序號 {seq}')
+    flash(f'成功新增一筆資料')
     return redirect(url_for('settings_page'))
 
 # --- 修改密碼 ---

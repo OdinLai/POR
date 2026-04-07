@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build: .
@@ -10,8 +8,8 @@ services:
       - ./database:/app/database
     environment:
       - FLASK_APP=main.py
-      - FLASK_ENV=production
-      - REMOTE_ACCESS_ENABLED=false # 加值功能開關
+      - FLASK_DEBUG=1
+      - REMOTE_ACCESS_ENABLED=false
     restart: always
 
   # 未來可擴充 rclone 定時備份容器

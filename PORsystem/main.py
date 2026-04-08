@@ -82,7 +82,7 @@ def update_title():
         else:
             config.value = new_title
         db.session.commit()
-    return redirect(url_for('manage'))
+    return redirect(url_for('manage_page'))
 
 @app.route('/logout')
 def logout():
@@ -243,6 +243,7 @@ def delete_user(id):
     if u and u.username != 'admin':
         db.session.delete(u)
         db.session.commit()
+        db.session.flush() # 確保資料庫狀態更新
     return redirect(url_for('users_page'))
 
 # --- 資料新增 ---

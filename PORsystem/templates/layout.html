@@ -50,7 +50,9 @@
         <div style="font-size: 1.5rem; font-weight: bold;">投影看板計畫</div>
         <div class="nav-links">
             <span>歡迎, {{ session.username }}</span>
-            <a href="/admin_home">主選單</a>
+            {% if request.endpoint not in ['admin_home', 'index'] %}
+            <a href="/admin_home" style="background: #e3f2fd; color: #1a73e8; padding: 5px 12px; border-radius: 4px;">回到選單</a>
+            {% endif %}
             <a href="/logout" style="color: var(--danger);">登出</a>
         </div>
     </div>
@@ -67,7 +69,28 @@
         </div>
     </div>
 
+    <div id="toast-msg" style="display: none; position: fixed; right: 20px; top: 80px; background: #34a853; color: white; padding: 10px 20px; border-radius: 4px; z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        用戶權限已保存
+    </div>
+
     <script>
+        function showToast(msg) {
+            const toast = document.getElementById('toast-msg');
+            if(msg) toast.innerText = msg;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 5000);
+        }
+        
+        // 頁面加載後檢查是否有 Flash 訊息
+        window.onload = function() {
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                {% for message in messages %}
+                  showToast("{{ message }}");
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+        }
         function showModal(msg) {
             document.getElementById('modal-msg').innerText = msg;
             document.getElementById('modal-overlay').style.display = 'flex';

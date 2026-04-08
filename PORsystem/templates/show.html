@@ -2,66 +2,117 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="30">
+    <meta http-equiv="refresh" content="60">
     <title>投影看板 - Show</title>
     <style>
     :root {
         --header-blue: #e3f2fd;
-        --border-color: #eee;
-        --text-main: #333;
+        --border-color: #ddd;
+        --text-main: #222;
         --text-muted: #666;
+        --row-height: 80px; /* 行高翻倍 */
     }
     body { 
         margin: 0; background: #fff; color: var(--text-main); 
-        font-family: 'Microsoft JhengHei', sans-serif; overflow: hidden; 
+        font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif; 
+        overflow: hidden; height: 100vh;
     }
     h1 {
         background: linear-gradient(135deg, #2196F3, #00BCD4);
         color: white;
         text-align: center;
-        padding: 10px 0;
+        padding: 12px 0;
         margin: 0;
-        font-size: 2.2rem;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        font-size: 2.5rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        letter-spacing: 5px;
     }
-    .container { display: flex; height: calc(100vh - 60px); width: 100vw; }
+    .container { display: flex; height: calc(100vh - 75px); width: 100vw; }
     .column { 
         flex: 1; 
-        border-right: 2px solid var(--border-color); 
+        border-right: 3px solid var(--border-color); 
         display: flex; 
         flex-direction: column; 
+        overflow: hidden;
     }
     .column:last-child { border-right: none; }
-    .column-header { 
-        background: var(--header-blue); 
-        padding: 15px; 
-        text-align: center; 
-        font-size: 1.5rem; 
-        font-weight: bold; 
-        color: #0d47a1;
-        border-bottom: 3px solid #2196F3;
+    
+    .column-header-group {
+        display: flex;
+        flex-direction: column;
+        background: var(--header-blue);
+        border-bottom: 4px solid #1a73e8;
     }
-    .item-list { flex-grow: 1; overflow-y: auto; }
+    .column-title {
+        text-align: center;
+        padding: 10px;
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #0d47a1;
+        border-bottom: 2px solid rgba(0,0,0,0.05);
+    }
+    .sub-header {
+        display: flex;
+        font-size: 0.9rem;
+        color: #555;
+        background: rgba(255,255,255,0.5);
+    }
+    .sh-seq { width: 4.5rem; text-align: center; border-right: 2px solid var(--border-color); padding: 5px 0; }
+    .sh-content { flex: 1; text-align: center; padding: 5px 0; }
+
+    .item-list { 
+        flex-grow: 1; 
+        overflow-y: hidden; /* 由 JS 控制捲動 */
+        position: relative;
+    }
     .item { 
         display: flex; 
-        padding: 12px 10px; 
+        min-height: var(--row-height);
         align-items: center; 
         border-bottom: 1px solid var(--border-color);
+        box-sizing: border-box;
     }
     /* 灰白相間 */
-    .item:nth-child(even) { background-color: #f9f9f9; }
+    .item:nth-child(even) { background-color: #fcfcfc; }
+    .item:nth-child(odd) { background-color: #ffffff; }
     
     .seq { 
-        width: 2.5rem; 
+        width: 4.5rem; 
         color: #1a73e8; 
         font-weight: bold; 
         text-align: center; 
-        margin-right: 10px;
-        font-size: 1.2rem;
+        font-size: 1.8rem;
+        align-self: stretch;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-right: 2px solid var(--border-color);
+        background: #f0f7ff;
     }
-    .content { flex: 1; }
-    .cabinet { font-size: 1.4rem; font-weight: 500; }
-    .remark { font-size: 0.9rem; color: var(--text-muted); font-style: italic; display: block; }
+    .content-box { 
+        flex: 1; 
+        padding: 10px 20px;
+        text-align: center; /* 內容置中 */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .cabinet { 
+        font-size: 2.2rem; /* 預設較大字體 */
+        font-weight: 700; 
+        line-height: 1.2;
+        word-break: break-all;
+    }
+    .remark { 
+        font-size: 1.1rem; 
+        color: #ff5722; 
+        font-style: italic; 
+        margin-top: 5px;
+        font-weight: 500;
+    }
+
+    /* 空行樣式 */
+    .item.empty { height: var(--row-height); }
 </style>
 </head>
 <body>
@@ -77,20 +128,88 @@
 
         {% for key, label in headers %}
         <div class="column">
-            <div class="column-header">{{ label }}</div>
-            <div class="item-list">
-                {% for item in data[key] %}
-                <div class="item">
-                    <span class="seq">{{ "%02d"|format(seq_map[item.id]) }}</span>
-                    <div class="content">
-                        <span class="cabinet">{{ item.cabinet_no }}</span>
-                        {% if item.remark %}<span class="remark">{{ item.remark }}</span>{% endif %}
-                    </div>
+            <div class="column-header-group">
+                <div class="column-title">{{ label }}</div>
+                <div class="sub-header">
+                    <div class="sh-seq">序號</div>
+                    <div class="sh-content">主要內容</div>
                 </div>
-                {% endfor %}
+            </div>
+            <div class="item-list" id="list-{{ key }}">
+                <div class="scroll-container">
+                    {% for item in data[key] %}
+                    <div class="item">
+                        <span class="seq">{{ "%02d"|format(seq_map[item.id]) }}</span>
+                        <div class="content-box">
+                            <span class="cabinet auto-font">{{ item.content }}</span>
+                            {% if item.remark %}<span class="remark">{{ item.remark }}</span>{% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {# 補足空行以維持斑馬紋 (假設每屏約 10-12 行) #}
+                    {% set list_len = data[key]|length %}
+                    {% if list_len < 12 %}
+                        {% for i in range(12 - list_len) %}
+                        <div class="item empty">
+                            <span class="seq" style="color: transparent;">-</span>
+                            <div class="content-box"></div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
             </div>
         </div>
         {% endfor %}
     </div>
+
+    <script>
+    // 1. 字體自適應縮放
+    function adjustFontSize() {
+        const elements = document.querySelectorAll('.auto-font');
+        elements.forEach(el => {
+            const text = el.innerText;
+            if (text.length > 20) {
+                el.style.fontSize = '1.2rem';
+            } else if (text.length > 10) {
+                el.style.fontSize = '1.6rem';
+            } else {
+                el.style.fontSize = '2.2rem';
+            }
+        });
+    }
+
+    // 2. 自動捲動邏輯 (每3秒捲一格)
+    function startAutoScroll() {
+        const lists = document.querySelectorAll('.item-list');
+        lists.forEach(list => {
+            const container = list.querySelector('.scroll-container');
+            const items = container.querySelectorAll('.item');
+            if (items.length <= 12) return; // 不足一屏不捲動
+
+            let currentIndex = 0;
+            const rowHeight = 80; // 與 CSS var(--row-height) 一致
+
+            setInterval(() => {
+                currentIndex++;
+                if (currentIndex > items.length - 10) {
+                    // 捲到底了，柔和重置
+                    list.scrollTo({ top: 0, behavior: 'smooth' });
+                    currentIndex = 0;
+                } else {
+                    list.scrollTo({
+                        top: currentIndex * rowHeight,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 3000);
+        });
+    }
+
+    window.onload = () => {
+        adjustFontSize();
+        startAutoScroll();
+    };
+    </script>
 </body>
 </html>

@@ -50,6 +50,20 @@
             {% endfor %}
         </tbody>
     </table>
-    <button type="submit" style="background: var(--primary); margin-top: 20px; font-size: 1.5rem;">儲存所有權限變更</button>
+    <div style="position: relative; display: inline-block;">
+        <button type="submit" onclick="showToast()" style="background: var(--primary); margin-top: 20px; font-size: 1.5rem; width: 100%;">儲存所有權限變更</button>
+        <div id="local-toast" style="display: none; color: #28a745; font-weight: bold; margin-top: 10px; font-size: 1.1rem; text-align: center;">
+            <span style="border: 1px solid #28a745; padding: 5px 15px; border-radius: 5px; background: #f0fdf4;">✓ 用戶權限已保存</span>
+        </div>
+    </div>
 </form>
+
+<script>
+    // 覆寫 layout 中的 showToast 以顯示在按鈕下方
+    function showToast(msg) {
+        const toast = document.getElementById('local-toast');
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 5000);
+    }
+</script>
 {% endblock %}

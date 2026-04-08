@@ -5,7 +5,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./database:/app/database
+      - ./instance:/app/instance
     environment:
       - FLASK_APP=main.py
       - FLASK_DEBUG=1

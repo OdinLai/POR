@@ -62,7 +62,7 @@
 
 <div class="manage-wrapper">
     <div class="config-card">
-        <h3>系統設定</h3>
+        <h3>更新看板標題</h3>
         <form action="{{ url_for('update_title') }}" method="POST" class="title-form">
             <input type="text" name="new_title" value="{{ site_title }}" placeholder="請輸入看板標題">
             <button type="submit" class="btn btn-save">更新看板標題</button>
@@ -84,7 +84,7 @@
             <tr>
                 <td style="font-weight: bold; color: #1a73e8;">{{ "%02d"|format(loop.index) }}</td>
                 <td>
-                    <div style="font-weight: 500;">{{ item.cabinet_no }}</div>
+                    <div style="font-weight: 500;">{{ item.content }}</div>
                     {% if item.remark %}<span class="remark-text">備註: {{ item.remark }}</span>{% endif %}
                 </td>
                 <td>

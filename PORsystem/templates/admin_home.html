@@ -6,27 +6,27 @@
     <a href="/manage" class="big-button btn-blue">
         管理進度<br><small style="font-size: 0.8rem; font-weight: normal;">(轉移/清除資料)</small>
     </a>
+
+    {% if session.is_admin %}
+    <a href="/settings" class="big-button btn-red">
+        新增項目
+    </a>
+    {% endif %}
     
     <a href="/all_data" class="big-button btn-green">
         全部資料<br><small style="font-size: 0.8rem; font-weight: normal;">(完整清單)</small>
-    </a>
-
-    <a href="/change_password" class="big-button btn-yellow">
-        修改密碼
     </a>
 
     {% if session.is_admin %}
     <a href="/users" class="big-button btn-purple">
         管理用戶<br><small style="font-size: 0.8rem; font-weight: normal;">(權限分配)</small>
     </a>
-    
-    <a href="/settings" class="big-button btn-red">
-        系統設定
-    </a>
     {% endif %}
-    
-    <a href="/show" target="_blank" class="big-button btn-blue" style="background: #202124;">
-        開啟看板頁面<br><small style="font-size: 0.8rem; font-weight: normal;">(電視端)</small>
+
+    <a href="/change_password" class="big-button btn-yellow">
+        修改密碼
     </a>
+    
+    {# 移除手機端不必要的開啟看板按鈕 #}
 </div>
 {% endblock %}

@@ -109,7 +109,11 @@ def show_page():
         'PRODUCTION': [i for i in items if i.current_stage == 'PRODUCTION'],
         'DELIVERY': [i for i in items if i.current_stage == 'DELIVERY']
     }
-    return render_template('show.html', data=data, all_items=items)
+    today_date = datetime.now().strftime('%Y/%m/%d')
+    return render_template('show.html', 
+                          data=data, 
+                          all_items=items,
+                          today_date=today_date)
 
 @app.route('/manage')
 def manage_page():

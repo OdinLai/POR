@@ -26,15 +26,17 @@
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         letter-spacing: 5px;
         position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
     .header-date {
         position: absolute;
-        right: 20px;
-        bottom: 10px;
-        font-size: 1.2rem;
-        letter-spacing: 1px;
-        font-weight: normal;
-        opacity: 0.9;
+        right: 30px;
+        font-size: 1.4rem;
+        letter-spacing: 2px;
+        font-weight: 500;
+        color: #fff;
     }
     .main-container {
         display: flex;
@@ -117,12 +119,12 @@
         padding: 5px 10px 5px 0;
     }
     .serial-no {
-        font-size: 0.9rem;
-        color: #777;
-        font-weight: normal;
+        font-size: 1rem;
+        color: #f57c00;
+        font-weight: bold;
     }
     .date-text-small {
-        font-size: 1rem;
+        font-size: 1.1rem;
         margin-top: auto;
     }
 
@@ -164,6 +166,7 @@
             <div id="scroll-container">
                 {% set stages = ['ORDER', 'ARRIVAL', 'PRODUCTION', 'DELIVERY'] %}
                 {% for item in all_items %}
+                {% set row_loop = loop %}
                 <div class="row">
                     {% for stage in stages %}
                     <div class="cell">
@@ -179,7 +182,7 @@
                             {% if d %}
                                 {% if stage == 'ORDER' %}
                                     <div class="date-badge first-col-badge">
-                                        <div class="serial-no">{{ "%02d"|format(loop.index) }}</div>
+                                        <div class="serial-no">{{ "%02d"|format(row_loop.index) }}</div>
                                         <div class="date-text-small">{{ d }}</div>
                                     </div>
                                 {% else %}

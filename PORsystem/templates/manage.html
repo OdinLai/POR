@@ -35,9 +35,9 @@
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     .data-table th {
-        background-color: #e3f2fd; /* 淺藍色 */
+        background-color: #e3f2fd;
         color: #333;
-        text-align: left;
+        text-align: center;
         padding: 15px;
         border-bottom: 2px solid #2196F3;
     }
@@ -53,10 +53,13 @@
         cursor: pointer;
         font-size: 0.9rem;
         transition: opacity 0.2s;
+        display: inline-block;
+        color: white;
     }
     .btn:hover { opacity: 0.8; }
-    .btn-save { background-color: #28a745; color: white; }
-    .btn-action { background-color: #007bff; color: white; }
+    .btn-save { background-color: #28a745; }
+    .btn-action { background-color: #007bff; }
+    .btn-delete { background-color: #dc3545; }
     .remark-text { font-size: 0.85rem; color: #666; display: block; margin-top: 4px; }
 </style>
 
@@ -73,18 +76,20 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 80px;">操作</th>
+                <th style="width: 100px;">刪除操作</th>
                 <th style="width: 80px;">序號</th>
-                <th>內容</th>
+                <th style="text-align: left;">內容</th>
                 <th>當前階段</th>
-                <th>處置</th>
+                <th>處置轉移</th>
             </tr>
         </thead>
         <tbody>
             {% for item in items %}
             <tr id="row-{{ item.id }}">
                 <td style="text-align: center;">
-                    <button onclick="deleteItem({{ item.id }})" class="btn" style="background: #dc3545; color: white;">刪除</button>
+                    <form action="/manage/delete/{{ item.id }}" method="POST" onsubmit="return confirm('確定要刪除此項目嗎？');">
+                        <button type="submit" class="btn btn-delete">刪除</button>
+                    </form>
                 </td>
                 <td style="font-weight: bold; color: #1a73e8; text-align: center;">{{ "%02d"|format(loop.index) }}</td>
                 <td>
@@ -98,13 +103,13 @@
                 </td>
                 <td style="text-align: center;">
                     {% if item.current_stage == 'ORDER' %}
-                        <button onclick="action('{{ item.id }}', 'ARRIVAL')" class="btn btn-action">轉移至到貨</button>
+                        <button onclick="transferItem('{{ item.id }}', 'ARRIVAL')" class="btn btn-action">轉移至到貨</button>
                     {% elif item.current_stage == 'ARRIVAL' %}
-                        <button onclick="action('{{ item.id }}', 'PRODUCTION')" class="btn btn-action" style="background:#ffc107; color:#333;">轉移至製作</button>
+                        <button onclick="transferItem('{{ item.id }}', 'PRODUCTION')" class="btn btn-action" style="background:#ffc107; color:#333;">轉移至製作</button>
                     {% elif item.current_stage == 'PRODUCTION' %}
-                        <button onclick="action('{{ item.id }}', 'DELIVERY')" class="btn btn-action" style="background:#17a2b8;">轉移至出庫</button>
+                        <button onclick="transferItem('{{ item.id }}', 'DELIVERY')" class="btn btn-action" style="background:#17a2b8;">轉移至出庫</button>
                     {% elif item.current_stage == 'DELIVERY' %}
-                        <button onclick="action('{{ item.id }}', 'CLEAR')" class="btn btn-action" style="background:#dc3545;">清除並記錄</button>
+                        <button onclick="transferItem('{{ item.id }}', 'CLEAR')" class="btn btn-action" style="background:#dc3545;">清除並記錄</button>
                     {% endif %}
                 </td>
             </tr>
@@ -114,26 +119,7 @@
 </div>
 
 <script>
-function deleteItem(itemId) {
-    if (!confirm('確定要永久刪除此項目嗎？')) return;
-    
-    fetch(`/api/delete_item/${itemId}`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'}
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            const row = document.getElementById(`row-${itemId}`);
-            if(row) row.remove();
-            showToast('項目已成功刪除');
-        } else {
-            alert('刪除失敗: ' + data.message);
-        }
-    });
-}
-
-function action(id, target) {
+function transferItem(id, target) {
     if (target === 'CLEAR' && !confirm('確定要清除此筆資料並記錄至日誌嗎？')) return;
     
     fetch('/api/transfer', {

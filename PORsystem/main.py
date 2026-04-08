@@ -207,6 +207,20 @@ def api_delete_item(item_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})
 
+@app.route('/manage/delete/<int:item_id>', methods=['POST'])
+def manage_delete_item(item_id):
+    if 'user_id' not in session: return "403", 403
+    item = SignboardItem.query.get(item_id)
+    if item:
+        try:
+            db.session.delete(item)
+            db.session.commit()
+            flash('項目已成功刪除')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'刪除失敗: {str(e)}')
+    return redirect(url_for('manage_page'))
+
 @app.route('/all_data')
 def all_data():
     if 'user_id' not in session:
@@ -253,16 +267,24 @@ def update_permissions():
     flash('權限已更新')
     return redirect(url_for('users_page'))
 
-@app.route('/users/delete/<int:id>')
+@app.route('/users/delete/<int:id>', methods=['POST'])
 def delete_user(id):
     if not session.get('is_admin'): return "403", 403
     u = User.query.get(id)
-    if u and u.username != 'admin':
-        # 顯式刪除權限以避免併發或 Foreign Key 限制問題
-        if u.permissions:
-            db.session.delete(u.permissions)
-        db.session.delete(u)
-        db.session.commit()
+    if u:
+        if u.username == 'admin':
+            flash('無法刪除超級管理員')
+        else:
+            try:
+                # 顯式清理關聯物件
+                if u.permissions:
+                    db.session.delete(u.permissions)
+                db.session.delete(u)
+                db.session.commit()
+                flash(f'用戶 {u.username} 已刪除')
+            except Exception as e:
+                db.session.rollback()
+                flash(f'刪除失敗: {str(e)}')
     return redirect(url_for('users_page'))
 
 # --- 資料新增 ---

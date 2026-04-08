@@ -7,8 +7,8 @@
 <div style="background: white; padding: 2rem; border-radius: 15px; margin-bottom: 2rem;">
     <h3>新增用戶</h3>
     <form action="/users/add" method="post" style="display: flex; gap: 10px;">
-        <input type="text" name="username" placeholder="用戶名" required style="flex: 1;">
-        <button type="submit" style="width: auto; background: var(--success); padding: 10px 30px;">建立 (預設密碼 666666)</button>
+        <input type="text" name="username" placeholder="用戶名" required style="flex: 1; padding: 8px;">
+        <button type="submit" style="width: auto; background: var(--success); padding: 10px 30px; color: white; border: none; border-radius: 5px; cursor: pointer;">建立 (預設密碼 666666)</button>
     </form>
 </div>
 
@@ -41,7 +41,9 @@
                     <td style="padding: 15px;"><input type="checkbox" name="can_clear_{{ u.id }}" {% if p.can_clear_delivery %}checked{% endif %}></td>
                     <td style="padding: 15px;"><input type="checkbox" name="is_admin_{{ u.id }}" {% if u.is_admin %}checked{% endif %}></td>
                     <td style="padding: 15px;">
-                        <a href="/users/delete/{{ u.id }}" style="color: var(--danger); text-decoration: none;" onclick="return confirm('確定刪除？')">刪除</a>
+                        <form action="/users/delete/{{ u.id }}" method="post" onsubmit="return confirm('確定要永久刪除用戶 {{ u.username }} 嗎？');" style="display:inline;">
+                            <button type="submit" style="background: none; border: none; color: var(--danger); cursor: pointer; text-decoration: underline; padding: 0; font-size: 1rem;">刪除</button>
+                        </form>
                     </td>
                 {% else %}
                     <td colspan="7" style="color: #999; font-style: italic;">超級管理員 (全權限保護)</td>
@@ -50,20 +52,9 @@
             {% endfor %}
         </tbody>
     </table>
-    <div style="position: relative; display: inline-block;">
-        <button type="submit" onclick="showToast()" style="background: var(--primary); margin-top: 20px; font-size: 1.5rem; width: 100%;">儲存所有權限變更</button>
-        <div id="local-toast" style="display: none; color: #28a745; font-weight: bold; margin-top: 10px; font-size: 1.1rem; text-align: center;">
-            <span style="border: 1px solid #28a745; padding: 5px 15px; border-radius: 5px; background: #f0fdf4;">✓ 用戶權限已保存</span>
-        </div>
+    <div style="position: relative; display: inline-block; width: 100%;">
+        <button type="submit" style="background: var(--primary); color: white; border: none; padding: 15px; margin-top: 20px; font-size: 1.5rem; width: 100%; border-radius: 8px; cursor: pointer;">儲存所有權限變更</button>
     </div>
 </form>
 
-<script>
-    // 覆寫 layout 中的 showToast 以顯示在按鈕下方
-    function showToast(msg) {
-        const toast = document.getElementById('local-toast');
-        toast.style.display = 'block';
-        setTimeout(() => { toast.style.display = 'none'; }, 5000);
-    }
-</script>
 {% endblock %}

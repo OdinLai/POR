@@ -190,6 +190,23 @@ def api_transfer():
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})
 
+@app.route('/api/delete_item/<int:item_id>', methods=['POST'])
+def api_delete_item(item_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': '未登入'})
+    
+    item = SignboardItem.query.get(item_id)
+    if not item:
+        return jsonify({'success': False, 'message': '找不到該項目'})
+    
+    try:
+        db.session.delete(item)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '項目已刪除'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
 @app.route('/all_data')
 def all_data():
     if 'user_id' not in session:
@@ -241,9 +258,11 @@ def delete_user(id):
     if not session.get('is_admin'): return "403", 403
     u = User.query.get(id)
     if u and u.username != 'admin':
+        # 顯式刪除權限以避免併發或 Foreign Key 限制問題
+        if u.permissions:
+            db.session.delete(u.permissions)
         db.session.delete(u)
         db.session.commit()
-        db.session.flush() # 確保資料庫狀態更新
     return redirect(url_for('users_page'))
 
 # --- 資料新增 ---

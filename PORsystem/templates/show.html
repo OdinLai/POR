@@ -7,10 +7,9 @@
     <style>
     :root {
         --header-blue: #e3f2fd;
-        --border-color: #ddd;
+        --border-color: #eee;
         --text-main: #222;
-        --text-muted: #666;
-        --row-height: 80px; /* 行高翻倍 */
+        --row-height: 100px; /* 進一步增加行高以適應日期 */
     }
     body { 
         margin: 0; background: #fff; color: var(--text-main); 
@@ -27,144 +26,153 @@
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         letter-spacing: 5px;
     }
-    .container { display: flex; height: calc(100vh - 75px); width: 100vw; }
-    .column { 
-        flex: 1; 
-        border-right: 3px solid var(--border-color); 
-        display: flex; 
-        flex-direction: column; 
-        overflow: hidden;
-    }
-    .column:last-child { border-right: none; }
-    
-    .column-header-group {
+    .main-container {
         display: flex;
         flex-direction: column;
-        background: var(--header-blue);
-        border-bottom: 4px solid #1a73e8;
+        height: calc(100vh - 75px);
     }
-    .column-title {
+    .table-header {
+        display: flex;
+        background: var(--header-blue);
+        border-bottom: 3px solid #1a73e8;
+        z-index: 10;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .col-header {
+        flex: 1;
         text-align: center;
-        padding: 10px;
+        padding: 15px 0;
         font-size: 1.8rem;
         font-weight: bold;
         color: #0d47a1;
-        border-bottom: 2px solid rgba(0,0,0,0.05);
+        border-right: 2px solid rgba(0,0,0,0.1);
     }
-    .sub-header {
-        display: flex;
-        font-size: 0.9rem;
-        color: #555;
-        background: rgba(255,255,255,0.5);
-    }
-    .sh-seq { width: 4.5rem; text-align: center; border-right: 2px solid var(--border-color); padding: 5px 0; }
-    .sh-content { flex: 1; text-align: center; padding: 5px 0; }
+    .col-header:last-child { border-right: none; }
 
-    .item-list { 
-        flex-grow: 1; 
-        overflow-y: hidden; /* 由 JS 控制捲動 */
+    .scroll-wrapper {
+        flex: 1;
+        overflow-y: hidden;
         position: relative;
     }
-    .item { 
-        display: flex; 
+    .row {
+        display: flex;
         min-height: var(--row-height);
-        align-items: center; 
         border-bottom: 1px solid var(--border-color);
         box-sizing: border-box;
     }
     /* 灰白相間 */
-    .item:nth-child(even) { background-color: #fcfcfc; }
-    .item:nth-child(odd) { background-color: #ffffff; }
-    
-    .seq { 
-        width: 4.5rem; 
-        color: #1a73e8; 
-        font-weight: bold; 
-        text-align: center; 
-        font-size: 1.8rem;
-        align-self: stretch;
+    .row:nth-child(even) { background-color: #f9f9f9; }
+    .row:nth-child(odd) { background-color: #ffffff; }
+
+    .cell {
+        flex: 1;
+        border-right: 1px solid var(--border-color);
         display: flex;
         align-items: center;
         justify-content: center;
-        border-right: 2px solid var(--border-color);
-        background: #f0f7ff;
+        position: relative;
+        padding: 5px;
+        overflow: hidden;
     }
-    .content-box { 
-        flex: 1; 
-        padding: 10px 20px;
-        text-align: center; /* 內容置中 */
+    .cell:last-child { border-right: none; }
+
+    .item-content {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        width: 100%;
+        height: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+    }
+    .date-badge {
+        flex: 0 0 4.5rem;
+        font-size: 1.4rem;
+        color: #1a73e8;
+        font-weight: bold;
+        text-align: center;
+        border-right: 2px solid #1a73e8;
+        padding-right: 10px;
+        margin-right: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .text-box {
+        flex: 1;
         display: flex;
         flex-direction: column;
         justify-content: center;
+        text-align: center;
     }
-    .cabinet { 
-        font-size: 2.2rem; /* 預設較大字體 */
-        font-weight: 700; 
-        line-height: 1.2;
+    .cabinet {
+        font-size: 2.2rem;
+        font-weight: 700;
+        line-height: 1.1;
         word-break: break-all;
     }
-    .remark { 
-        font-size: 1.1rem; 
-        color: #ff5722; 
-        font-style: italic; 
-        margin-top: 5px;
+    .remark {
+        font-size: 1rem;
+        color: #ff5722;
+        margin-top: 4px;
         font-weight: 500;
     }
-
-    /* 空行樣式 */
-    .item.empty { height: var(--row-height); }
 </style>
 </head>
 <body>
     <h1>{{ site_title }}</h1>
-    <div class="container">
-        {% set headers = [('ORDER', '訂貨'), ('ARRIVAL', '到貨'), ('PRODUCTION', '製作'), ('DELIVERY', '出庫')] %}
+    <div class="main-container">
+        <div class="table-header">
+            <div class="col-header">訂貨</div>
+            <div class="col-header">到貨</div>
+            <div class="col-header">製作</div>
+            <div class="col-header">出庫</div>
+        </div>
         
-        {# 序號映射 #}
-        {% set seq_map = {} %}
-        {% for item in all_items %}
-            {% set _ = seq_map.update({item.id: loop.index}) %}
-        {% endfor %}
-
-        {% for key, label in headers %}
-        <div class="column">
-            <div class="column-header-group">
-                <div class="column-title">{{ label }}</div>
-                <div class="sub-header">
-                    <div class="sh-seq">序號</div>
-                    <div class="sh-content">主要內容</div>
-                </div>
-            </div>
-            <div class="item-list" id="list-{{ key }}">
-                <div class="scroll-container">
-                    {% for item in data[key] %}
-                    <div class="item">
-                        <span class="seq">{{ "%02d"|format(seq_map[item.id]) }}</span>
-                        <div class="content-box">
-                            <span class="cabinet auto-font">{{ item.content }}</span>
-                            {% if item.remark %}<span class="remark">{{ item.remark }}</span>{% endif %}
+        <div class="scroll-wrapper" id="scroll-wrapper">
+            <div id="scroll-container">
+                {% set stages = ['ORDER', 'ARRIVAL', 'PRODUCTION', 'DELIVERY'] %}
+                {% for item in all_items %}
+                <div class="row">
+                    {% for stage in stages %}
+                    <div class="cell">
+                        {% if item.current_stage == stage %}
+                        <div class="item-content">
+                            <div class="date-badge">
+                                {% if stage == 'ORDER' %}{{ item.order_date }}
+                                {% elif stage == 'ARRIVAL' %}{{ item.arrival_date }}
+                                {% elif stage == 'PRODUCTION' %}{{ item.production_date }}
+                                {% elif stage == 'DELIVERY' %}{{ item.delivery_date }}
+                                {% endif %}
+                            </div>
+                            <div class="text-box">
+                                <span class="cabinet auto-font">{{ item.content }}</span>
+                                {% if item.remark %}<span class="remark">{{ item.remark }}</span>{% endif %}
+                            </div>
                         </div>
+                        {% endif %}
                     </div>
                     {% endfor %}
-                    
-                    {# 補足空行以維持斑馬紋 (假設每屏約 10-12 行) #}
-                    {% set list_len = data[key]|length %}
-                    {% if list_len < 12 %}
-                        {% for i in range(12 - list_len) %}
-                        <div class="item empty">
-                            <span class="seq" style="color: transparent;">-</span>
-                            <div class="content-box"></div>
-                        </div>
-                        {% endfor %}
-                    {% endif %}
                 </div>
+                {% endfor %}
+
+                {# 補足空行維持高度 #}
+                {% set total_items = all_items|length %}
+                {% if total_items < 10 %}
+                    {% for i in range(10 - total_items) %}
+                    <div class="row empty-row">
+                        <div class="cell"></div>
+                        <div class="cell"></div>
+                        <div class="cell"></div>
+                        <div class="cell"></div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
             </div>
         </div>
-        {% endfor %}
     </div>
 
     <script>
-    // 1. 字體自適應縮放
     function adjustFontSize() {
         const elements = document.querySelectorAll('.auto-font');
         elements.forEach(el => {
@@ -179,31 +187,27 @@
         });
     }
 
-    // 2. 自動捲動邏輯 (每3秒捲一格)
     function startAutoScroll() {
-        const lists = document.querySelectorAll('.item-list');
-        lists.forEach(list => {
-            const container = list.querySelector('.scroll-container');
-            const items = container.querySelectorAll('.item');
-            if (items.length <= 12) return; // 不足一屏不捲動
+        const wrapper = document.getElementById('scroll-wrapper');
+        const container = document.getElementById('scroll-container');
+        const rows = container.querySelectorAll('.row');
+        if (rows.length <= 10) return;
 
-            let currentIndex = 0;
-            const rowHeight = 80; // 與 CSS var(--row-height) 一致
+        let currentIndex = 0;
+        const rowHeight = 100;
 
-            setInterval(() => {
-                currentIndex++;
-                if (currentIndex > items.length - 10) {
-                    // 捲到底了，柔和重置
-                    list.scrollTo({ top: 0, behavior: 'smooth' });
-                    currentIndex = 0;
-                } else {
-                    list.scrollTo({
-                        top: currentIndex * rowHeight,
-                        behavior: 'smooth'
-                    });
-                }
-            }, 3000);
-        });
+        setInterval(() => {
+            currentIndex++;
+            if (currentIndex > rows.length - 8) {
+                wrapper.scrollTo({ top: 0, behavior: 'smooth' });
+                currentIndex = 0;
+            } else {
+                wrapper.scrollTo({
+                    top: currentIndex * rowHeight,
+                    behavior: 'smooth'
+                });
+            }
+        }, 3000);
     }
 
     window.onload = () => {

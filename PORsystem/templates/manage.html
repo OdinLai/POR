@@ -73,26 +73,30 @@
     <table class="data-table">
         <thead>
             <tr>
+                <th style="width: 80px;">操作</th>
                 <th style="width: 80px;">序號</th>
                 <th>內容</th>
                 <th>當前階段</th>
-                <th>操作</th>
+                <th>處置</th>
             </tr>
         </thead>
         <tbody>
             {% for item in items %}
-            <tr>
-                <td style="font-weight: bold; color: #1a73e8;">{{ "%02d"|format(loop.index) }}</td>
+            <tr id="row-{{ item.id }}">
+                <td style="text-align: center;">
+                    <button onclick="deleteItem({{ item.id }})" class="btn" style="background: #dc3545; color: white;">刪除</button>
+                </td>
+                <td style="font-weight: bold; color: #1a73e8; text-align: center;">{{ "%02d"|format(loop.index) }}</td>
                 <td>
                     <div style="font-weight: 500;">{{ item.content }}</div>
                     {% if item.remark %}<span class="remark-text">備註: {{ item.remark }}</span>{% endif %}
                 </td>
-                <td>
+                <td style="text-align: center;">
                     <span style="background: #e1f5fe; color: #0288d1; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">
                         {{ item.current_stage }}
                     </span>
                 </td>
-                <td>
+                <td style="text-align: center;">
                     {% if item.current_stage == 'ORDER' %}
                         <button onclick="action('{{ item.id }}', 'ARRIVAL')" class="btn btn-action">轉移至到貨</button>
                     {% elif item.current_stage == 'ARRIVAL' %}
@@ -110,6 +114,25 @@
 </div>
 
 <script>
+function deleteItem(itemId) {
+    if (!confirm('確定要永久刪除此項目嗎？')) return;
+    
+    fetch(`/api/delete_item/${itemId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const row = document.getElementById(`row-${itemId}`);
+            if(row) row.remove();
+            showToast('項目已成功刪除');
+        } else {
+            alert('刪除失敗: ' + data.message);
+        }
+    });
+}
+
 function action(id, target) {
     if (target === 'CLEAR' && !confirm('確定要清除此筆資料並記錄至日誌嗎？')) return;
     

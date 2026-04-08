@@ -25,6 +25,16 @@
         font-size: 2.5rem;
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         letter-spacing: 5px;
+        position: relative;
+    }
+    .header-date {
+        position: absolute;
+        right: 20px;
+        bottom: 10px;
+        font-size: 1.2rem;
+        letter-spacing: 1px;
+        font-weight: normal;
+        opacity: 0.9;
     }
     .main-container {
         display: flex;
@@ -45,7 +55,7 @@
         font-size: 1.8rem;
         font-weight: bold;
         color: #0d47a1;
-        border-right: 3px solid #333;
+        border-right: 3px solid #666;
     }
     .col-header:last-child { border-right: none; }
 
@@ -66,7 +76,7 @@
 
     .cell {
         flex: 1;
-        border-right: 3px solid #333;
+        border-right: 3px solid #666;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -97,7 +107,25 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        height: 80%;
     }
+    
+    /* 第一欄專用的日期與序號樣式 */
+    .first-col-badge {
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 5px 10px 5px 0;
+    }
+    .serial-no {
+        font-size: 0.9rem;
+        color: #777;
+        font-weight: normal;
+    }
+    .date-text-small {
+        font-size: 1rem;
+        margin-top: auto;
+    }
+
     .text-box {
         flex: 1;
         display: flex;
@@ -120,7 +148,10 @@
 </style>
 </head>
 <body>
-    <h1>{{ site_title }}</h1>
+    <h1>
+        {{ site_title }}
+        <span class="header-date">{{ today_date }}</span>
+    </h1>
     <div class="main-container">
         <div class="table-header">
             <div class="col-header">訂貨</div>
@@ -146,7 +177,14 @@
                         {% if d or item.current_stage == stage %}
                         <div class="item-content">
                             {% if d %}
-                            <div class="date-badge">{{ d }}</div>
+                                {% if stage == 'ORDER' %}
+                                    <div class="date-badge first-col-badge">
+                                        <div class="serial-no">{{ "%02d"|format(loop.index) }}</div>
+                                        <div class="date-text-small">{{ d }}</div>
+                                    </div>
+                                {% else %}
+                                    <div class="date-badge">{{ d }}</div>
+                                {% endif %}
                             {% endif %}
                             
                             {% if item.current_stage == stage %}

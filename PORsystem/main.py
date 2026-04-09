@@ -37,6 +37,32 @@ def get_inf_config(section, key, default=None):
         pass
     return default
 
+def format_stay_time(start_time):
+    """將時間差格式化為 分、時分、天時"""
+    if not start_time: return ""
+    delta = datetime.now() - start_time
+    total_seconds = int(delta.total_seconds())
+    if total_seconds < 60: return "剛剛"
+    
+    minutes = (total_seconds // 60) % 60
+    hours = (total_seconds // 3600) % 24
+    days = total_seconds // 86400
+    
+    if days > 0:
+        return f"{days}天{hours}時"
+    elif hours > 0:
+        return f"{hours}時{minutes}分"
+    else:
+        return f"{minutes}分"
+
+def format_item_date(dt, date_format):
+    """根據設定決定顯示 原始日期 或 停留時間"""
+    if not dt: return ""
+    if date_format == '1': # 顯示停留時間
+        return format_stay_time(dt)
+    else: # 顯示 MM/DD
+        return dt.strftime('%m/%d')
+
 @app.context_processor
 def inject_config():
     # 標題維持從資料庫或預設讀取，不開放外部 .inf 修改以避免衝突
@@ -115,24 +141,39 @@ def admin_home():
 
 @app.route('/show')
 def show_page():
-    """電視看板顯示頁面 (30秒刷新)"""
-    # 按照 ID 順序抓取所有看板內容
+    """電視看板顯示頁面 (多參數支援)"""
     items = SignboardItem.query.order_by(SignboardItem.id.asc()).all()
-    # 按階段分組
+    date_format = get_inf_config('Display', 'date_format', '0')
+    
+    # 預處理顯示內容以適應「日期」與「停留時間」切換
+    processed_items = []
+    for item in items:
+        p_item = {
+            'id': item.id,
+            'content': item.content,
+            'remark': item.remark,
+            'current_stage': item.current_stage,
+            'ORDER': format_item_date(item.order_date, date_format),
+            'ARRIVAL': format_item_date(item.arrival_date, date_format),
+            'PRODUCTION': format_item_date(item.production_date, date_format),
+            'DELIVERY': format_item_date(item.delivery_date, date_format)
+        }
+        processed_items.append(p_item)
+
     data = {
-        'ORDER': [i for i in items if i.current_stage == 'ORDER'],
-        'ARRIVAL': [i for i in items if i.current_stage == 'ARRIVAL'],
-        'PRODUCTION': [i for i in items if i.current_stage == 'PRODUCTION'],
-        'DELIVERY': [i for i in items if i.current_stage == 'DELIVERY']
+        'ORDER': [i for i in processed_items if i['current_stage'] == 'ORDER'],
+        'ARRIVAL': [i for i in processed_items if i['current_stage'] == 'ARRIVAL'],
+        'PRODUCTION': [i for i in processed_items if i['current_stage'] == 'PRODUCTION'],
+        'DELIVERY': [i for i in processed_items if i['current_stage'] == 'DELIVERY']
     }
+    
     today_date = datetime.now().strftime('%Y/%m/%d')
-    # 讀取外部設定參數，若無則使用預設值
     refresh_seconds = get_inf_config('System', 'refresh_seconds', '60')
     scroll_speed_ms = get_inf_config('Display', 'scroll_speed_ms', '3000')
     
     return render_template('show.html', 
                           data=data, 
-                          all_items=items,
+                          all_items=processed_items,
                           today_date=today_date,
                           refresh_seconds=refresh_seconds,
                           scroll_speed_ms=scroll_speed_ms)
@@ -163,28 +204,28 @@ def api_transfer():
     if not item:
         return jsonify({'success': False, 'message': '找不到此資料'})
     
-    now_str = datetime.now().strftime('%m/%d')
+    now_dt = datetime.now()
     user = User.query.get(session['user_id'])
     perms = user.permissions
     
     try:
         if target == 'ARRIVAL' and perms.can_transfer_arrival:
             item.current_stage = 'ARRIVAL'
-            item.arrival_date = now_str
+            item.arrival_date = now_dt
         elif target == 'PRODUCTION' and perms.can_transfer_production:
             item.current_stage = 'PRODUCTION'
-            item.production_date = now_str
+            item.production_date = now_dt
         elif target == 'DELIVERY' and perms.can_transfer_delivery:
             item.current_stage = 'DELIVERY'
-            item.delivery_date = now_str
+            item.delivery_date = now_dt
         elif target == 'CLEAR' and perms.can_clear_delivery:
-            # 1. 寫入資料庫歷史表 (移除 sequence_id)
-            log_year = datetime.now().year
+            # 1. 寫入資料庫歷史表 (轉換為 ISO 字串存入 JSON)
+            log_year = now_dt.year
             timeline_data = {
-                'order': item.order_date,
-                'arrival': item.arrival_date,
-                'production': item.production_date,
-                'delivery': item.delivery_date
+                'order': item.order_date.isoformat() if item.order_date else "",
+                'arrival': item.arrival_date.isoformat() if item.arrival_date else "",
+                'production': item.production_date.isoformat() if item.production_date else "",
+                'delivery': item.delivery_date.isoformat() if item.delivery_date else ""
             }
             log_db = HistoryLog(
                 content=item.content,
@@ -329,9 +370,9 @@ def add_item():
     
     content = request.form.get('content')
     remark = request.form.get('remark')
-    now_str = datetime.now().strftime('%m/%d')
+    now_dt = datetime.now()
     
-    item = SignboardItem(content=content, remark=remark, current_stage='ORDER', order_date=now_str)
+    item = SignboardItem(content=content, remark=remark, current_stage='ORDER', order_date=now_dt)
     db.session.add(item)
     db.session.commit()
     flash(f'成功新增一筆資料')

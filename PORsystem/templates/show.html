@@ -169,10 +169,10 @@
                     {% for stage in stages %}
                     <div class="cell">
                         {% set d = "" %}
-                        {% if stage == 'ORDER' %}{% set d = item.order_date %}
-                        {% elif stage == 'ARRIVAL' %}{% set d = item.arrival_date %}
-                        {% elif stage == 'PRODUCTION' %}{% set d = item.production_date %}
-                        {% elif stage == 'DELIVERY' %}{% set d = item.delivery_date %}
+                        {% if stage == 'ORDER' %}{% set d = item.ORDER %}
+                        {% elif stage == 'ARRIVAL' %}{% set d = item.ARRIVAL %}
+                        {% elif stage == 'PRODUCTION' %}{% set d = item.PRODUCTION %}
+                        {% elif stage == 'DELIVERY' %}{% set d = item.DELIVERY %}
                         {% endif %}
 
                         {% if d or item.current_stage == stage %}

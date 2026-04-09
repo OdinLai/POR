@@ -33,13 +33,13 @@ class SignboardItem(db.Model):
     # 目前階段: ORDER, ARRIVAL, PRODUCTION, DELIVERY
     current_stage = db.Column(db.String(20), default='ORDER')
     
-    # 各階段標記日期 (格式可自定義為 MM/DD)
-    order_date = db.Column(db.String(10))
-    arrival_date = db.Column(db.String(10))
-    production_date = db.Column(db.String(10))
-    delivery_date = db.Column(db.String(10))
+    # 各階段標記日期 (升級為 DateTime 以記錄完整精確時間)
+    order_date = db.Column(db.DateTime)
+    arrival_date = db.Column(db.DateTime)
+    production_date = db.Column(db.DateTime)
+    delivery_date = db.Column(db.DateTime)
     
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
 class HistoryLog(db.Model):
     """歷史日誌：資料清除後的存檔紀錄"""
@@ -47,11 +47,11 @@ class HistoryLog(db.Model):
     content = db.Column(db.Text)
     remark = db.Column(db.Text)
     
-    # 完整的生命週期時間線 (JSON 字串)
+    # 完整的生命週期時間線 (JSON 字串，現在存儲完整 ISO 格式)
     timeline = db.Column(db.JSON) 
     
     cleared_by = db.Column(db.String(50)) # 執行清除的用戶名
-    cleared_at = db.Column(db.DateTime, default=datetime.utcnow)
+    cleared_at = db.Column(db.DateTime, default=datetime.now)
     
     log_year = db.Column(db.Integer) # 用於年度分割查詢索引
 

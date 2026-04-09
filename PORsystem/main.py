@@ -63,6 +63,17 @@ def format_item_date(dt, date_format):
     else: # 顯示 MM/DD
         return dt.strftime('%m/%d')
 
+def touch_system_update():
+    """標記系統發生了任何形式的資料變動（新增、轉移、刪除）"""
+    config = SystemConfig.query.filter_by(key='last_system_update').first()
+    now_str = str(datetime.now().timestamp())
+    if config:
+        config.value = now_str
+    else:
+        config = SystemConfig(key='last_system_update', value=now_str)
+        db.session.add(config)
+    db.session.commit()
+
 @app.context_processor
 def inject_config():
     # 標題維持從資料庫或預設讀取，不開放外部 .inf 修改以避免衝突
@@ -171,9 +182,8 @@ def show_page():
     refresh_seconds = get_inf_config('System', 'refresh_seconds', '60')
     scroll_speed_ms = get_inf_config('Display', 'scroll_speed_ms', '3000')
     
-    # 計算目前的最新變動時間，用於前端比較
-    latest_update = SignboardItem.query.with_entities(func.max(SignboardItem.updated_at)).scalar()
-    latest_ts = latest_update.timestamp() if latest_update else 0
+    # 使用全域系統變更時間戳進行比較，確保刪除操作也能觸發刷新
+    latest_ts = get_config('last_system_update', '0')
     
     return render_template('show.html', 
                           data=data, 
@@ -185,12 +195,10 @@ def show_page():
 
 @app.route('/api/latest_update')
 def api_latest_update():
-    """供前端輪詢的偵測介面：回傳最新資料變動時間戳"""
+    """供前端輪詢的偵測介面：回傳系統全域變動版本號"""
     try:
-        latest_update = SignboardItem.query.with_entities(func.max(SignboardItem.updated_at)).scalar()
-        if latest_update:
-            return jsonify({'success': True, 'timestamp': latest_update.timestamp()})
-        return jsonify({'success': True, 'timestamp': 0})
+        latest_ts = get_config('last_system_update', '0')
+        return jsonify({'success': True, 'timestamp': float(latest_ts)})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -263,11 +271,13 @@ def api_transfer():
 
             db.session.delete(item) 
             db.session.commit()
+            touch_system_update() # 標記異動
             return jsonify({'success': True, 'message': '已清除並同步記錄至年度日誌檔案'})
         else:
             return jsonify({'success': False, 'message': '權限不足或非法操作'})
         
         db.session.commit()
+        touch_system_update() # 標記異動
         return jsonify({'success': True, 'message': f'已轉移至 {target}'})
     except Exception as e:
         db.session.rollback()
@@ -285,6 +295,7 @@ def api_delete_item(item_id):
     try:
         db.session.delete(item)
         db.session.commit()
+        touch_system_update() # 標記異動，確保看板同步刷新
         return jsonify({'success': True, 'message': '項目已刪除'})
     except Exception as e:
         db.session.rollback()
@@ -391,6 +402,7 @@ def add_item():
     item = SignboardItem(content=content, remark=remark, current_stage='ORDER', order_date=now_dt)
     db.session.add(item)
     db.session.commit()
+    touch_system_update() # 標記新項目加入
     flash(f'成功新增一筆資料')
     return redirect(url_for('settings_page'))
 

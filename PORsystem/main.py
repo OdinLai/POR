@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from models import db, User, Permission, SignboardItem, HistoryLog, SystemConfig
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
-import os
+from sqlalchemy import func
 import configparser
 
 app = Flask(__name__, instance_relative_config=True)
@@ -171,12 +171,28 @@ def show_page():
     refresh_seconds = get_inf_config('System', 'refresh_seconds', '60')
     scroll_speed_ms = get_inf_config('Display', 'scroll_speed_ms', '3000')
     
+    # 計算目前的最新變動時間，用於前端比較
+    latest_update = SignboardItem.query.with_entities(func.max(SignboardItem.updated_at)).scalar()
+    latest_ts = latest_update.timestamp() if latest_update else 0
+    
     return render_template('show.html', 
                           data=data, 
                           all_items=processed_items,
                           today_date=today_date,
                           refresh_seconds=refresh_seconds,
-                          scroll_speed_ms=scroll_speed_ms)
+                          scroll_speed_ms=scroll_speed_ms,
+                          latest_ts=latest_ts)
+
+@app.route('/api/latest_update')
+def api_latest_update():
+    """供前端輪詢的偵測介面：回傳最新資料變動時間戳"""
+    try:
+        latest_update = SignboardItem.query.with_entities(func.max(SignboardItem.updated_at)).scalar()
+        if latest_update:
+            return jsonify({'success': True, 'timestamp': latest_update.timestamp()})
+        return jsonify({'success': True, 'timestamp': 0})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/manage')
 def manage_page():

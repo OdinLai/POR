@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="{{ refresh_seconds }}">
+    <!-- 移除舊式 Meta 刷新，改由背景 AI 智慧感應 -->
     <title>投影看板 - Show</title>
     <style>
     :root {
@@ -256,9 +256,25 @@
         }, scrollInterval);
     }
 
+    const initialTs = {{ latest_ts }};
+    function startSmartRefresh() {
+        // 每 5 秒詢問一次伺服器是否有新資料
+        setInterval(() => {
+            fetch('/api/latest_update')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.timestamp > initialTs) {
+                        location.reload(); // 偵測到變動，執行智慧刷新
+                    }
+                })
+                .catch(err => console.log('輪詢失敗，可能是網路暫時中斷'));
+        }, 5000);
+    }
+
     window.onload = () => {
         adjustFontSize();
         startAutoScroll();
+        startSmartRefresh();
     };
     </script>
 </body>

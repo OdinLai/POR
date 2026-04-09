@@ -3,6 +3,7 @@ from models import db, User, Permission, SignboardItem, HistoryLog, SystemConfig
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import os
+import configparser
 
 app = Flask(__name__, instance_relative_config=True)
 # 確保 instance 資料夾存在
@@ -22,8 +23,27 @@ def get_config(key, default=None):
     config = SystemConfig.query.filter_by(key=key).first()
     return config.value if config else default
 
+def get_inf_config(section, key, default=None):
+    """從 config.inf 讀取設定，優先級最高"""
+    inf_path = os.path.join(os.path.dirname(__file__), 'config.inf')
+    if not os.path.exists(inf_path):
+        return default
+    config = configparser.ConfigParser()
+    try:
+        config.read(inf_path, encoding='utf-8')
+        if section in config and key in config[section]:
+            return config[section][key]
+    except Exception:
+        pass
+    return default
+
 @app.context_processor
 def inject_config():
+    # 優先讀取外部 .inf 標題
+    inf_title = get_inf_config('System', 'site_title')
+    if inf_title:
+        return {'site_title': inf_title}
+    # 否則從資料庫或預設
     return {'site_title': get_config('site_title', '中國到貨看板系統')}
 
 # 初始化資料庫
@@ -110,10 +130,16 @@ def show_page():
         'DELIVERY': [i for i in items if i.current_stage == 'DELIVERY']
     }
     today_date = datetime.now().strftime('%Y/%m/%d')
+    # 讀取外部設定參數，若無則使用預設值
+    refresh_seconds = get_inf_config('System', 'refresh_seconds', '60')
+    scroll_speed_ms = get_inf_config('Display', 'scroll_speed_ms', '3000')
+    
     return render_template('show.html', 
                           data=data, 
                           all_items=items,
-                          today_date=today_date)
+                          today_date=today_date,
+                          refresh_seconds=refresh_seconds,
+                          scroll_speed_ms=scroll_speed_ms)
 
 @app.route('/manage')
 def manage_page():

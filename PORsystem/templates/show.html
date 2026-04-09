@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="60">
+    <meta http-equiv="refresh" content="{{ refresh_seconds }}">
     <title>投影看板 - Show</title>
     <style>
     :root {
@@ -240,6 +240,7 @@
 
         let currentIndex = 0;
         const rowHeight = 100;
+        const scrollInterval = {{ scroll_speed_ms or 3000 }};
 
         setInterval(() => {
             currentIndex++;
@@ -252,7 +253,7 @@
                     behavior: 'smooth'
                 });
             }
-        }, 3000);
+        }, scrollInterval);
     }
 
     window.onload = () => {

@@ -275,6 +275,12 @@
         adjustFontSize();
         startAutoScroll();
         startSmartRefresh();
+        
+        // 補回定時自動刷新邏輯，確保「停留時間」能準確跳動
+        const regularRefreshMs = ({{ refresh_seconds or 60 }}) * 1000;
+        setTimeout(() => {
+            location.reload();
+        }, regularRefreshMs);
     };
     </script>
 </body>

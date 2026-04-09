@@ -39,11 +39,7 @@ def get_inf_config(section, key, default=None):
 
 @app.context_processor
 def inject_config():
-    # 優先讀取外部 .inf 標題
-    inf_title = get_inf_config('System', 'site_title')
-    if inf_title:
-        return {'site_title': inf_title}
-    # 否則從資料庫或預設
+    # 標題維持從資料庫或預設讀取，不開放外部 .inf 修改以避免衝突
     return {'site_title': get_config('site_title', '中國到貨看板系統')}
 
 # 初始化資料庫

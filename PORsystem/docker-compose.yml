@@ -6,6 +6,7 @@ services:
       - "5000:5000"
     volumes:
       - ./instance:/app/instance
+      - ./config.inf:/app/config.inf
     environment:
       - FLASK_APP=main.py
       - FLASK_DEBUG=1

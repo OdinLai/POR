@@ -12,4 +12,4 @@ scroll_speed_ms = 3000
 
 ;看板表格中日期顯示格式 0 僅日期 1 已停留時間
 
-date_format = 0
+date_format = 1

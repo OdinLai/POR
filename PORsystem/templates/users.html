@@ -2,58 +2,65 @@
 {% block title %}用戶管理{% endblock %}
 
 {% block content %}
-<h1>用戶管理與權限矩陣</h1>
+<h1>用戶管理與權限</h1>
 
-<div style="background: white; padding: 2rem; border-radius: 15px; margin-bottom: 2rem;">
-    <h3>新增用戶</h3>
-    <form action="/users/add" method="post" style="display: flex; gap: 10px;">
-        <input type="text" name="username" placeholder="用戶名" required style="flex: 1; padding: 8px;">
-        <button type="submit" style="width: auto; background: var(--success); padding: 10px 30px; color: white; border: none; border-radius: 5px; cursor: pointer;">建立 (預設密碼 666666)</button>
-    </form>
-</div>
-
-<h3>權限二維表格</h3>
+<h3>權限與用戶管理</h3>
 <form action="/users/update_permissions" method="post">
-    <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden;">
+    <div style="background: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; border-left: 5px solid var(--success); display: flex; align-items: center; gap: 20px;">
+        <span style="font-weight: bold; color: #555;">快捷新增用戶:</span>
+        <input type="text" name="new_username" placeholder="輸入新用戶名稱..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+        <span style="font-size: 0.85rem; color: #999;">(點擊下方儲存或直接按 Enter 即可建立)</span>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
         <thead>
             <tr style="background: #202124; color: white;">
                 <th style="padding: 15px; text-align: left;">用戶名</th>
                 <th style="padding: 15px;">新增訂貨</th>
-                <th style="padding: 15px;">轉移到貨</th>
-                <th style="padding: 15px;">轉移製作</th>
-                <th style="padding: 15px;">轉移出庫</th>
+                {% for stage in workflow_stages %}
+                <th style="padding: 15px;">轉移{{ stage.name }}</th>
+                {% endfor %}
                 <th style="padding: 15px;">清空出庫</th>
+                <th style="padding: 15px;">刪除資料</th>
                 <th style="padding: 15px;">管理員</th>
                 <th style="padding: 15px;">操作</th>
             </tr>
         </thead>
         <tbody>
             {% for u in users %}
+            {% if u.username != 'administrator' %}
             <tr style="border-bottom: 1px solid #eee; text-align: center;">
                 <td style="padding: 15px; text-align: left; font-weight: bold;">{{ u.username }}</td>
                 <input type="hidden" name="user_id" value="{{ u.id }}">
-                {% if u.username != 'admin' %}
+                {% if u.username != 'admin' and u.username != 'administrator' %}
                     {% set p = u.permissions %}
                     <td style="padding: 15px;"><input type="checkbox" name="can_add_{{ u.id }}" {% if p.can_add_order %}checked{% endif %}></td>
-                    <td style="padding: 15px;"><input type="checkbox" name="can_arrival_{{ u.id }}" {% if p.can_transfer_arrival %}checked{% endif %}></td>
-                    <td style="padding: 15px;"><input type="checkbox" name="can_production_{{ u.id }}" {% if p.can_transfer_production %}checked{% endif %}></td>
-                    <td style="padding: 15px;"><input type="checkbox" name="can_delivery_{{ u.id }}" {% if p.can_transfer_delivery %}checked{% endif %}></td>
+                    
+                    {% for stage in workflow_stages %}
+                    <td style="padding: 15px;">
+                        <input type="checkbox" name="can_{{ stage.key }}_{{ u.id }}" {% if p.stage_perms and p.stage_perms.get(stage.key) %}checked{% endif %}>
+                    </td>
+                    {% endfor %}
+                    
                     <td style="padding: 15px;"><input type="checkbox" name="can_clear_{{ u.id }}" {% if p.can_clear_delivery %}checked{% endif %}></td>
+                    <td style="padding: 15px;"><input type="checkbox" name="can_delete_{{ u.id }}" {% if p.can_delete %}checked{% endif %}></td>
                     <td style="padding: 15px;"><input type="checkbox" name="is_admin_{{ u.id }}" {% if u.is_admin %}checked{% endif %}></td>
                     <td style="padding: 15px;">
-                        <form action="/users/delete/{{ u.id }}" method="post" onsubmit="return confirm('確定要永久刪除用戶 {{ u.username }} 嗎？');" style="display:inline;">
-                            <button type="submit" style="background: none; border: none; color: var(--danger); cursor: pointer; text-decoration: underline; padding: 0; font-size: 1rem;">刪除</button>
-                        </form>
+                        <button type="submit" formaction="/users/delete/{{ u.id }}" onclick="return confirm('確定要永久刪除用戶 {{ u.username }} 嗎？');" style="background: none; border: none; color: var(--danger); cursor: pointer; text-decoration: underline; padding: 0; font-size: 1rem;">刪除</button>
                     </td>
                 {% else %}
-                    <td colspan="7" style="color: #999; font-style: italic;">超級管理員 (全權限保護)</td>
+                    <td colspan="{{ 4 + workflow_stages|length }}" style="color: #999; font-style: italic;">超級管理員 (全權限保護)</td>
                 {% endif %}
             </tr>
+            {% endif %}
             {% endfor %}
         </tbody>
     </table>
-    <div style="position: relative; display: inline-block; width: 100%;">
-        <button type="submit" style="background: var(--primary); color: white; border: none; padding: 15px; margin-top: 20px; font-size: 1.5rem; width: 100%; border-radius: 8px; cursor: pointer;">儲存所有權限變更</button>
+    
+    <div style="position: sticky; bottom: 20px; z-index: 100;">
+        <button type="submit" style="background: var(--primary); color: white; border: none; padding: 18px; margin-top: 20px; font-size: 1.5rem; width: 100%; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 20px rgba(0,123,255,0.4); transition: transform 0.2s;">
+            🎯 儲存所有變更並管理用戶
+        </button>
     </div>
 </form>
 

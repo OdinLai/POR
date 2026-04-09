@@ -3,7 +3,7 @@ title POR Signboard Auto Launcher
 set PORT=5000
 
 echo [1/2] Starting Docker Containers...
-docker-compose up -d
+docker-compose up -d --build
 
 echo Waiting for the web service to be ready on port %PORT%...
 :check_ready

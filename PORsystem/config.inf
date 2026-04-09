@@ -13,3 +13,9 @@ scroll_speed_ms = 3000
 ;看板表格中日期顯示格式 0 僅日期 1 已停留時間
 
 date_format = 1
+
+[Workflow]
+; 階段定義：ID:顯示名稱 (以逗號分隔)
+stages = ORDER:訂貨, ARRIVAL:到貨, PRODUCTION:製作, DELIVERY:出庫
+; 初始階段 ID
+initial_stage = ORDER

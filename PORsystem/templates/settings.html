@@ -18,7 +18,7 @@
             <input type="text" name="remark" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; box-sizing: border-box;" placeholder="例如：急件、自取、下午兩點到...">
         </div>
         
-        <button type="submit" style="background: var(--success); font-size: 1.5rem;">新增至 [訂貨] 欄位</button>
+        <button type="submit" style="background: var(--success); font-size: 1.5rem;">新增至 [{{ workflow_stages[0].name }}] 欄位</button>
     </form>
 </div>
 {% endblock %}

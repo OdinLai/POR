@@ -3,24 +3,28 @@
 
 {% block content %}
 <h1>全部資料明細</h1>
-<p>此處顯示所有看板資料的完整內容（支援文字折行）。</p>
+<div style="height: 10px;"></div>
 
 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
     {% for item in items %}
     <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 5px solid #1a73e8;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-            <span style="font-weight: bold; color: #ff9800;">序號: {{ item.sequence_id }}</span>
-            <span style="background: #eee; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">{{ item.current_stage }}</span>
+            <span style="font-weight: bold; color: #ff9800;">目前階段: {{ item.current_stage_name }}</span>
         </div>
-        <div style="font-size: 1.1rem; line-height: 1.6; word-break: break-all;">
+        <div style="font-size: 1.1rem; line-height: 1.6; word-break: break-all; margin-bottom: 10px;">
             {{ item.content }}
         </div>
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
-        <div style="font-size: 0.85rem; color: #666;">
-            <div>訂貨: {{ item.order_date or '-' }}</div>
-            <div>到貨: {{ item.arrival_date or '-' }}</div>
-            <div>製作: {{ item.production_date or '-' }}</div>
-            <div>出庫: {{ item.delivery_date or '-' }}</div>
+        <div style="font-size: 0.9rem; color: #888; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 15px;">
+            {% if item.remark %}備註: {{ item.remark }}{% endif %}
+        </div>
+        
+        <div style="font-size: 0.85rem; color: #666; background: #f8f9fa; padding: 10px; border-radius: 8px;">
+            {% for h in item.history %}
+            <div style="margin-bottom: 5px; display: flex; align-items: center;">
+                <span style="font-weight: bold; color: #555; white-space: nowrap;">{{ h.name }}:</span>
+                <span style="font-family: monospace; flex-grow: 1; text-align: {{ 'center' if h.val == '-' else 'right' }};">{{ h.val }}</span>
+            </div>
+            {% endfor %}
         </div>
     </div>
     {% endfor %}

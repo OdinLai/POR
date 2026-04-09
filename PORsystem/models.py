@@ -14,30 +14,30 @@ class User(db.Model):
     permissions = db.relationship('Permission', backref='user', uselist=False, cascade="all, delete-orphan")
 
 class Permission(db.Model):
-    """權限矩陣：二維表格的實體化"""
+    """權限矩陣：二維表格的實體化 (已更新為動態 JSON)"""
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     
-    can_add_order = db.Column(db.Boolean, default=False)        # 新增訂貨
-    can_transfer_arrival = db.Column(db.Boolean, default=False)  # 轉移至到貨
-    can_transfer_production = db.Column(db.Boolean, default=False) # 轉移至製作
-    can_transfer_delivery = db.Column(db.Boolean, default=False)   # 轉移至出庫
-    can_clear_delivery = db.Column(db.Boolean, default=False)      # 清除已出庫
+    can_add_order = db.Column(db.Boolean, default=False)        # 新增訂貨 (保留為獨立權限)
+    
+    # 動態階段權限：儲存如 {"ARRIVAL": true, "PRODUCTION": false, ...}
+    stage_perms = db.Column(db.JSON, default={})
+    
+    can_clear_delivery = db.Column(db.Boolean, default=False)      # 清除最後一階段 (保留為獨立權限)
+    can_delete = db.Column(db.Boolean, default=False)              # 刪除資料權限
 
 class SignboardItem(db.Model):
-    """看板即時資料：負責 Show 頁面的核心顯示"""
+    """看板即時資料：負責 Show 頁面的核心顯示 (已更新為動態 JSON)"""
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     remark = db.Column(db.Text) # 備註 (選填)
     
-    # 目前階段: ORDER, ARRIVAL, PRODUCTION, DELIVERY
-    current_stage = db.Column(db.String(20), default='ORDER')
+    # 目前階段 ID (對應 config.inf 中的 Key)
+    current_stage = db.Column(db.String(50), default='ORDER')
     
-    # 各階段標記日期 (升級為 DateTime 以記錄完整精確時間)
-    order_date = db.Column(db.DateTime)
-    arrival_date = db.Column(db.DateTime)
-    production_date = db.Column(db.DateTime)
-    delivery_date = db.Column(db.DateTime)
+    # 各階段標記日期：儲存如 {"ORDER": "...", "ARRIVAL": "..."}
+    # 存儲格式為 ISO 字串，讀取時再轉換
+    stage_dates = db.Column(db.JSON, default={})
     
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 

@@ -2,7 +2,25 @@
 {% block title %}看板管理系統{% endblock %}
 
 {% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; max-width: 1200px; margin: 20px auto; padding: 0 20px;">
+    <h1>進度與庫存管理</h1>
+    
+    <!-- 模式切換鈕 -->
+    <div style="background: #e9ecef; padding: 5px; border-radius: 30px; display: flex; gap: 5px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
+        <button id="btn-kanban" onclick="setMode('kanban')" class="mode-btn active">看板模式</button>
+        <button id="btn-role" onclick="setMode('role')" class="mode-btn">角色模式</button>
+    </div>
+</div>
+
 <style>
+    .mode-btn {
+        padding: 8px 20px; border-radius: 25px; border: none; cursor: pointer; font-weight: bold;
+        transition: all 0.3s ease; background: transparent; color: #6c757d;
+    }
+    .mode-btn.active { background: white; color: #007bff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .row-item { transition: opacity 0.3s ease; }
+    .row-hidden { display: none; }
+
     .manage-wrapper {
         max-width: 1200px;
         margin: 20px auto;
@@ -85,7 +103,8 @@
         </thead>
         <tbody>
             {% for item in items %}
-            <tr id="row-{{ item.id }}">
+            {% set can_move = perms.stage_perms.get(item.current_stage) or (item.current_stage == workflow_stages[-1].key and perms.can_clear_delivery) or perms.can_delete %}
+            <tr class="row-item" data-has-perm="{{ 'true' if can_move else 'false' }}" style="border-bottom: 1px solid #eee;">
                 <td style="text-align: center;">
                     <form action="/manage/delete/{{ item.id }}" method="POST" onsubmit="return confirm('確定要刪除此項目嗎？');">
                         <button type="submit" class="btn btn-delete">刪除</button>
@@ -98,18 +117,48 @@
                 </td>
                 <td style="text-align: center;">
                     <span style="background: #e1f5fe; color: #0288d1; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">
-                        {{ item.current_stage }}
+                        {% for s in workflow_stages %}
+                            {% if s.key == item.current_stage %}{{ s.name }}{% endif %}
+                        {% endfor %}
                     </span>
                 </td>
                 <td style="text-align: center;">
-                    {% if item.current_stage == 'ORDER' %}
-                        <button onclick="transferItem('{{ item.id }}', 'ARRIVAL')" class="btn btn-action">轉移至到貨</button>
-                    {% elif item.current_stage == 'ARRIVAL' %}
-                        <button onclick="transferItem('{{ item.id }}', 'PRODUCTION')" class="btn btn-action" style="background:#ffc107; color:#333;">轉移至製作</button>
-                    {% elif item.current_stage == 'PRODUCTION' %}
-                        <button onclick="transferItem('{{ item.id }}', 'DELIVERY')" class="btn btn-action" style="background:#17a2b8;">轉移至出庫</button>
-                    {% elif item.current_stage == 'DELIVERY' %}
-                        <button onclick="transferItem('{{ item.id }}', 'CLEAR')" class="btn btn-action" style="background:#dc3545;">清除並記錄</button>
+                    {% set ns = namespace(next_stage=none, stage_index=0) %}
+                    {% set colors = ['#007bff', '#ffc107', '#17a2b8', '#6610f2', '#fd7e14', '#28a745', '#e83e8c', '#6f42c1', '#198754', '#795548'] %}
+                    
+                    {% for s in workflow_stages %}
+                        {% if s.key == item.current_stage %}
+                            {% set ns.stage_index = loop.index0 %}
+                            {% if not loop.last %}
+                                {% set ns.next_stage = workflow_stages[loop.index] %}
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if ns.next_stage %}
+                        {% set btn_color = colors[ns.stage_index % colors|length] %}
+                        {% set has_perm = perms.stage_perms.get(item.current_stage) if perms.stage_perms else false %}
+                        
+                        {% if has_perm %}
+                            {% set text_color = '#333' if btn_color == '#ffc107' else 'white' %}
+                            <button onclick="transferItem('{{ item.id }}', '{{ ns.next_stage.key }}')" 
+                                    class="btn btn-action" 
+                                    style="background: {{ btn_color }}; color: {{ text_color }};">
+                                轉移至{{ ns.next_stage.name }}
+                            </button>
+                        {% else %}
+                            <button class="btn btn-action" disabled 
+                                    style="background: #e0e0e0; color: #aaa; cursor: not-allowed; border: 1px solid #ccc; opacity: 0.8;">
+                                轉移至{{ ns.next_stage.name }}
+                            </button>
+                        {% endif %}
+                    {% else %}
+                        {# 最後一個階段，顯示清除按鈕 #}
+                        {% if perms.can_clear_delivery %}
+                            <button onclick="transferItem('{{ item.id }}', 'CLEAR')" class="btn btn-action" style="background:#dc3545;">清除並記錄</button>
+                        {% else %}
+                            <button class="btn btn-action" disabled style="background:#e0e0e0; color:#aaa; cursor:not-allowed; opacity: 0.8; border: 1px solid #ccc;">清除並記錄</button>
+                        {% endif %}
                     {% endif %}
                 </td>
             </tr>
@@ -119,21 +168,50 @@
 </div>
 
 <script>
-function transferItem(id, target) {
-    if (target === 'CLEAR' && !confirm('確定要清除此筆資料並記錄至日誌嗎？')) return;
-    
-    fetch('/api/transfer', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({id: id, target: target})
-    }).then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
+    function setMode(mode) {
+        const rows = document.querySelectorAll('.row-item');
+        const btnKanban = document.getElementById('btn-kanban');
+        const btnRole = document.getElementById('btn-role');
+
+        if (mode === 'role') {
+            rows.forEach(row => {
+                if (row.getAttribute('data-has-perm') === 'false') {
+                    row.classList.add('row-hidden');
+                }
+            });
+            btnRole.classList.add('active');
+            btnKanban.classList.remove('active');
         } else {
-            alert('錯誤: ' + data.message);
+            rows.forEach(row => {
+                row.classList.remove('row-hidden');
+            });
+            btnKanban.classList.add('active');
+            btnRole.classList.remove('active');
         }
-    });
-}
+    }
+
+    function transferItem(id, target) {
+        if (target === 'CLEAR' && !confirm('確定要清除此筆資料並記錄至日誌嗎？')) return;
+        
+        fetch('/api/transfer', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id: id, target: target})
+        }).then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('錯誤: ' + data.message);
+            }
+        });
+    }
+
+    function deleteItem(itemId) {
+        if (!confirm('確定要刪除此項目嗎？')) return;
+        fetch('/manage/delete/' + itemId, {
+            method: 'POST',
+        }).then(() => location.reload());
+    }
 </script>
 {% endblock %}

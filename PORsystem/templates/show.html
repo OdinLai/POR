@@ -154,31 +154,25 @@
     </h1>
     <div class="main-container">
         <div class="table-header">
-            <div class="col-header">訂貨</div>
-            <div class="col-header">到貨</div>
-            <div class="col-header">製作</div>
-            <div class="col-header">出庫</div>
+            {% for stage in workflow_stages %}
+            <div class="col-header">{{ stage.name }}</div>
+            {% endfor %}
         </div>
         
         <div class="scroll-wrapper" id="scroll-wrapper">
             <div id="scroll-container">
-                {% set stages = ['ORDER', 'ARRIVAL', 'PRODUCTION', 'DELIVERY'] %}
                 {% for item in all_items %}
                 {% set row_loop = loop %}
                 <div class="row">
-                    {% for stage in stages %}
+                    {% for stage in workflow_stages %}
                     <div class="cell">
-                        {% set d = "" %}
-                        {% if stage == 'ORDER' %}{% set d = item.ORDER %}
-                        {% elif stage == 'ARRIVAL' %}{% set d = item.ARRIVAL %}
-                        {% elif stage == 'PRODUCTION' %}{% set d = item.PRODUCTION %}
-                        {% elif stage == 'DELIVERY' %}{% set d = item.DELIVERY %}
-                        {% endif %}
+                        {% set sk = stage.key %}
+                        {% set d = item[sk] %}
 
-                        {% if d or item.current_stage == stage %}
+                        {% if d or item.current_stage == sk %}
                         <div class="item-content">
                             {% if d %}
-                                {% if stage == 'ORDER' %}
+                                {% if loop.first %}
                                     <div class="date-badge first-col-badge">
                                         <div class="serial-no">{{ "%02d"|format(row_loop.index) }}</div>
                                         <div class="date-text-small">{{ d }}</div>
@@ -188,7 +182,7 @@
                                 {% endif %}
                             {% endif %}
                             
-                            {% if item.current_stage == stage %}
+                            {% if item.current_stage == sk %}
                             <div class="text-box">
                                 <span class="cabinet auto-font">{{ item.content }}</span>
                                 {% if item.remark %}<span class="remark">{{ item.remark }}</span>{% endif %}
@@ -201,15 +195,14 @@
                 </div>
                 {% endfor %}
 
-                {# 補足空行維持高度 #}
+                {# 補足空行維持高度，增加至 20 欄以確保填滿大螢幕 #}
                 {% set total_items = all_items|length %}
-                {% if total_items < 10 %}
-                    {% for i in range(10 - total_items) %}
+                {% if total_items < 20 %}
+                    {% for i in range(20 - total_items) %}
                     <div class="row empty-row">
+                        {% for stage in workflow_stages %}
                         <div class="cell"></div>
-                        <div class="cell"></div>
-                        <div class="cell"></div>
-                        <div class="cell"></div>
+                        {% endfor %}
                     </div>
                     {% endfor %}
                 {% endif %}
@@ -236,7 +229,11 @@
         const wrapper = document.getElementById('scroll-wrapper');
         const container = document.getElementById('scroll-container');
         const rows = container.querySelectorAll('.row');
-        if (rows.length <= 10) return;
+        
+        // 修正邏輯：只有當「實際有資料」的項目超過 10 筆時，才啟動自動捲動
+        // 否則維持靜止，避免捲動到空行
+        const actualItemsCount = {{ all_items|length }};
+        if (actualItemsCount <= 10) return;
 
         let currentIndex = 0;
         const rowHeight = 100;

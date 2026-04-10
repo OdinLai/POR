@@ -10,6 +10,9 @@ refresh_seconds = 60
 ; 自動捲動一格的間隔時間（毫秒，1000 = 1秒）
 scroll_speed_ms = 3000
 
+; 顯示 QRcode 掃描入口 (1 顯示，0 不顯示)
+show_qrcode = 1
+
 ;看板表格中日期顯示格式 0 僅日期 1 已停留時間
 
 date_format = 1

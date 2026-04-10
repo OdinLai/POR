@@ -7,8 +7,8 @@
         管理進度<br><small style="font-size: 0.8rem; font-weight: normal;">(轉移/清除資料)</small>
     </a>
 
-    {% if session.is_admin %}
-    <a href="/settings" class="big-button btn-red">
+    {% if session.is_admin or (perms and perms.can_add_order) %}
+    <a href="/settings" class="big-button btn-azure">
         新增項目
     </a>
     {% endif %}

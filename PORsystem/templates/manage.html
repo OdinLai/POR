@@ -82,6 +82,7 @@
 </style>
 
 <div class="manage-wrapper">
+    {% if session.is_admin %}
     <div class="config-card">
         <h3>更新看板標題</h3>
         <form action="{{ url_for('update_title') }}" method="POST" class="title-form">
@@ -89,6 +90,7 @@
             <button type="submit" class="btn btn-save">更新看板標題</button>
         </form>
     </div>
+    {% endif %}
 
     <h2>當前項目管理</h2>
     <table class="data-table">
@@ -155,9 +157,9 @@
                     {% else %}
                         {# 最後一個階段，顯示清除按鈕 #}
                         {% if perms.can_clear_delivery %}
-                            <button onclick="transferItem('{{ item.id }}', 'CLEAR')" class="btn btn-action" style="background:#dc3545;">清除並記錄</button>
+                            <button onclick="transferItem('{{ item.id }}', 'CLEAR')" class="btn btn-action" style="background:#dc3545;">從看板清除</button>
                         {% else %}
-                            <button class="btn btn-action" disabled style="background:#e0e0e0; color:#aaa; cursor:not-allowed; opacity: 0.8; border: 1px solid #ccc;">清除並記錄</button>
+                            <button class="btn btn-action" disabled style="background:#e0e0e0; color:#aaa; cursor:not-allowed; opacity: 0.8; border: 1px solid #ccc;">從看板清除</button>
                         {% endif %}
                     {% endif %}
                 </td>
@@ -191,7 +193,7 @@
     }
 
     function transferItem(id, target) {
-        if (target === 'CLEAR' && !confirm('確定要清除此筆資料並記錄至日誌嗎？')) return;
+        if (target === 'CLEAR' && !confirm('是否確定從看板清除？')) return;
         
         fetch('/api/transfer', {
             method: 'POST',

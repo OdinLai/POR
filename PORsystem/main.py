@@ -70,6 +70,20 @@ def format_stay_time(start_time):
     else:
         return f"{minutes}分"
 
+import socket
+
+def get_lan_ip():
+    """獲取真實的區域網路 IP（解決掛載多個虛擬網卡的問題）"""
+    try:
+        # 建立一個測試連線來獲取正確的出站網卡 IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
 def format_item_date(dt, date_format):
     """根據設定決定顯示 原始日期 或 停留時間"""
     if not dt: return ""
@@ -151,6 +165,8 @@ def update_title():
         else:
             config.value = new_title
         db.session.commit()
+        touch_system_update() # 確保大螢幕看板同步刷新標題
+        flash('看板標題已更新')
     return redirect(url_for('manage_page'))
 
 @app.route('/logout')
@@ -164,7 +180,8 @@ def logout():
 def admin_home():
     if 'user_id' not in session:
         return redirect(url_for('index'))
-    return render_template('admin_home.html')
+    user = User.query.get(session['user_id'])
+    return render_template('admin_home.html', perms=user.permissions)
 
 @app.route('/show')
 def show_page():
@@ -206,6 +223,7 @@ def show_page():
     today_date = datetime.now().strftime('%Y/%m/%d')
     refresh_seconds = get_inf_config('System', 'refresh_seconds', '60')
     scroll_speed_ms = get_inf_config('Display', 'scroll_speed_ms', '3000')
+    show_qrcode = get_inf_config('Display', 'show_qrcode', '1')
     
     # 使用全域系統變更時間戳進行比較，確保刪除操作也能觸發刷新
     latest_ts = get_config('last_system_update', '0')
@@ -216,6 +234,8 @@ def show_page():
                           today_date=today_date,
                           refresh_seconds=refresh_seconds,
                           scroll_speed_ms=scroll_speed_ms,
+                          show_qrcode=show_qrcode,
+                          lan_ip=get_lan_ip(),
                           latest_ts=latest_ts)
 
 @app.route('/api/latest_update')
@@ -507,7 +527,13 @@ def delete_user(id):
 @app.route('/settings')
 def settings_page():
     if 'user_id' not in session: return redirect(url_for('index'))
-    return render_template('settings.html')
+    user = User.query.get(session['user_id'])
+    perms = user.permissions
+    # 只要是管理員，或者是擁有「新增訂貨」權限的人，都可以進來
+    if not user.is_admin and not (perms and perms.can_add_order):
+        flash('權限不足')
+        return redirect(url_for('admin_home'))
+    return render_template('settings.html', perms=perms)
 
 @app.route('/add_item', methods=['POST'])
 def add_item():

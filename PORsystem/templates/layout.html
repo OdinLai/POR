@@ -35,6 +35,7 @@
         .btn-yellow { background: linear-gradient(135deg, #fbbc05, #e6ac00); color: #333; }
         .btn-red { background: linear-gradient(135deg, #ea4335, #c53929); }
         .btn-purple { background: linear-gradient(135deg, #a142f4, #8332c5); }
+        .btn-azure { background: linear-gradient(135deg, #00d2ff, #3a7bd5); }
 
         /* 彈窗樣式 */
         #modal-overlay {
@@ -47,7 +48,7 @@
 </head>
 <body>
     <div class="nav-header">
-        <div style="font-size: 1.5rem; font-weight: bold;">投影看板計畫</div>
+        <div style="font-size: 1.5rem; font-weight: bold;">{{ site_title }}</div>
         <div class="nav-links">
             <span>歡迎, {{ session.username }}</span>
             {% if request.endpoint not in ['admin_home', 'index'] %}

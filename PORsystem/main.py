@@ -467,6 +467,7 @@ def api_undo_transfer():
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/api/delete_item/<int:item_id>', methods=['POST'])
+def api_delete_item(item_id):
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': '未登入'})
         

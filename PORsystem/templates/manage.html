@@ -102,7 +102,9 @@
     <table class="data-table">
         <thead>
             <tr>
+                {% if perms.can_delete %}
                 <th style="width: 100px;">刪除操作</th>
+                {% endif %}
                 <th style="width: 80px;">序號</th>
                 <th style="text-align: left;">內容</th>
                 <th>當前階段</th>
@@ -130,11 +132,13 @@
                 data-has-perm="{{ 'true' if can_move else 'false' }}" 
                 data-can-undo="{{ 'true' if ns_undo.can_undo else 'false' }}"
                 style="border-bottom: 1px solid #eee;">
+                {% if perms.can_delete %}
                 <td style="text-align: center;">
                     <form action="/manage/delete/{{ item.id }}" method="POST" onsubmit="return confirm('確定要刪除此項目嗎？');">
                         <button type="submit" class="btn btn-delete">刪除</button>
                     </form>
                 </td>
+                {% endif %}
                 <td style="font-weight: bold; color: #1a73e8; text-align: center;">{{ "%02d"|format(loop.index) }}</td>
                 <td>
                     <div style="font-weight: 500;">{{ item.content }}</div>

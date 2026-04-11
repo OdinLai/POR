@@ -467,9 +467,12 @@ def api_undo_transfer():
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/api/delete_item/<int:item_id>', methods=['POST'])
-def api_delete_item(item_id):
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': '未登入'})
+        
+    user = User.query.get(session['user_id'])
+    if not user.is_admin and not user.permissions.can_delete:
+        return jsonify({'success': False, 'message': '權限不足'})
     
     item = SignboardItem.query.get(item_id)
     if not item:
@@ -487,6 +490,11 @@ def api_delete_item(item_id):
 @app.route('/manage/delete/<int:item_id>', methods=['POST'])
 def manage_delete_item(item_id):
     if 'user_id' not in session: return "403", 403
+    
+    user = User.query.get(session['user_id'])
+    if not user.is_admin and not user.permissions.can_delete:
+        flash('您沒有刪除項目的權限')
+        return redirect(url_for('manage_page'))
     item = SignboardItem.query.get(item_id)
     if item:
         try:

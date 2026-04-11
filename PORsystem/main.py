@@ -108,7 +108,8 @@ def inject_config():
     # 標題維持從資料庫或預設讀取，不開放外部 .inf 修改以避免衝突
     return {
         'site_title': get_config('site_title', '中國到貨看板系統'),
-        'workflow_stages': get_workflow_stages()
+        'workflow_stages': get_workflow_stages(),
+        'undo_mode': get_inf_config('System', 'undo_mode', '1')
     }
 
 # 初始化資料庫
@@ -253,10 +254,13 @@ def manage_page():
     if 'user_id' not in session:
         return redirect(url_for('index'))
     
+    mode = request.args.get('mode', 'normal') # normal 或 undo
     user = User.query.get(session['user_id'])
-    # 這裡也需要按照順序抓取，確保管理端看到的序號跟看板一致
     items = SignboardItem.query.order_by(SignboardItem.id.asc()).all()
-    return render_template('manage.html', items=items, perms=user.permissions)
+    
+    # 權限過濾：如果具備階段轉移、清除、或刪除權限，就是有權限的項目
+    # 在 undo 模式下，我們需要判斷「這個項目是否位於我能撤回的下一關」
+    return render_template('manage.html', items=items, perms=user.permissions, mode=mode)
 
 @app.route('/all_data')
 def all_data_page():
@@ -395,6 +399,64 @@ def api_transfer():
         db.session.commit()
         touch_system_update() # 標記異動
         return jsonify({'success': True, 'message': f'已轉移至 {target}'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/undo_transfer', methods=['POST'])
+def api_undo_transfer():
+    """撤銷功能：將項目倒回上一個階段"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': '未登入'})
+    
+    data = request.json
+    item_id = data.get('id')
+    item = SignboardItem.query.get(item_id)
+    if not item:
+        return jsonify({'success': False, 'message': '找不到此資料'})
+        
+    user = User.query.get(session['user_id'])
+    perms = user.permissions
+    stages = get_workflow_stages()
+    stage_keys = [s['key'] for s in stages]
+    
+    # 找到當前階段的索引
+    try:
+        curr_idx = stage_keys.index(item.current_stage)
+    except ValueError:
+        return jsonify({'success': False, 'message': '當前階段異常，無法撤回'})
+        
+    if curr_idx <= 0:
+        return jsonify({'success': False, 'message': '已在最初階段，無法撤回'})
+        
+    prev_stage = stage_keys[curr_idx - 1]
+    
+    # 權限檢查：是否擁有「目標階段(前一階段)」的轉移權限
+    # 或者是管理員
+    undo_mode = get_inf_config('System', 'undo_mode', '1')
+    
+    can_undo = False
+    if session.get('is_admin'):
+        can_undo = True
+    elif undo_mode == '2': # 依權限開放
+        if perms.stage_perms and perms.stage_perms.get(prev_stage):
+            can_undo = True
+            
+    if not can_undo:
+        return jsonify({'success': False, 'message': '您沒有撤回至此階段的權限'})
+        
+    try:
+        # 執行撤回：修正階段，並刪除「當前階段」的時間紀錄
+        dates_obj = dict(item.stage_dates or {})
+        if item.current_stage in dates_obj:
+            del dates_obj[item.current_stage]
+            
+        item.stage_dates = dates_obj
+        item.current_stage = prev_stage
+        
+        db.session.commit()
+        touch_system_update()
+        return jsonify({'success': True, 'message': f'已撤回至 {prev_stage}'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})

@@ -450,6 +450,11 @@ def api_undo_transfer():
         dates_obj = dict(item.stage_dates or {})
         if item.current_stage in dates_obj:
             del dates_obj[item.current_stage]
+        
+        # 額外補強：如果「目標階段」原本就沒有時間紀錄（可能之前是跳級轉移）
+        # 則補上當前時間，確保看板不會出現「無停留時間」的奇妙現象
+        if prev_stage not in dates_obj:
+            dates_obj[prev_stage] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             
         item.stage_dates = dates_obj
         item.current_stage = prev_stage

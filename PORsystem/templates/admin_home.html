@@ -12,6 +12,12 @@
         新增項目
     </a>
     {% endif %}
+
+    {% if (undo_mode == '1' and session.is_admin) or undo_mode == '2' %}
+    <a href="/manage?mode=undo" class="big-button btn-orange">
+        撤銷轉移<br><small style="font-size: 0.8rem; font-weight: normal;">(倒回前一階段)</small>
+    </a>
+    {% endif %}
     
     <a href="/all_data" class="big-button btn-green">
         全部資料<br><small style="font-size: 0.8rem; font-weight: normal;">(完整清單)</small>

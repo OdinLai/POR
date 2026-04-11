@@ -518,26 +518,41 @@ def all_data():
     
     processed_items = []
     for item in items:
-        dates_obj = item.stage_dates or {}
-        # 尋找當前階段的顯示名稱
-        current_name = item.current_stage
-        for s in stages:
-            if s['key'] == item.current_stage:
-                current_name = s['name']
-                break
-                
+        # 手動處理每個項目的階段數據，支援新舊格式
         p_item = {
+            'id': item.id,
             'content': item.content,
             'remark': item.remark,
-            'current_stage': current_name
+            'current_stage_name': item.current_stage, # 預設
+            'history': []
         }
-        for sk in stage_keys:
-            dt_str = dates_obj.get(sk)
+        
+        # 尋找當前階段的顯示名稱
+        for s in stages:
+            if s['key'] == item.current_stage:
+                p_item['current_stage_name'] = s['name']
+                break
+        
+        # 填充歷史紀錄 (排除 CREATED，對應使用者要求「移除新增」)
+        dates_obj = item.stage_dates or {}
+        for s in stages:
+            dt_str = dates_obj.get(s['key'])
             if dt_str:
-                dt = datetime.fromisoformat(dt_str)
-                p_item[sk] = dt.strftime('%Y-%m-%d %H:%M')
+                # 兼容格式
+                if isinstance(dt_str, dict):
+                    dt_val = dt_str.get('date', '-')
+                else:
+                    dt_val = dt_str
+                
+                try:
+                    display_time = datetime.fromisoformat(dt_val).strftime('%Y-%m-%d %H:%M')
+                except:
+                    display_time = dt_val
+                
+                p_item['history'].append({'name': s['name'], 'val': display_time})
             else:
-                p_item[sk] = '-'
+                p_item['history'].append({'name': s['name'], 'val': '-'})
+            
         processed_items.append(p_item)
         
     return render_template('all_data.html', items=processed_items)

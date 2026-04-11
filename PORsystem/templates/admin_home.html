@@ -13,10 +13,20 @@
     </a>
     {% endif %}
 
-    {% if (undo_mode == '1' and session.is_admin) or undo_mode == '2' %}
-    <a href="/manage?mode=undo" class="big-button btn-orange">
-        撤銷轉移<br><small style="font-size: 0.8rem; font-weight: normal;">(倒回前一階段)</small>
-    </a>
+    {# 撤銷轉移按鈕：根據 undo_mode 與使用者權限判斷是否顯示 #}
+    {% if undo_mode == '1' %}
+        {% if session.is_admin %}
+        <a href="/manage?mode=undo" class="big-button btn-orange">
+            撤銷轉移<br><small style="font-size: 0.8rem; font-weight: normal;">(管理員專用)</small>
+        </a>
+        {% endif %}
+    {% elif undo_mode == '2' %}
+        {# 模式 2：管理員或具備任何階段權限的人皆可看到 #}
+        {% if session.is_admin or (perms and perms.stage_perms) %}
+        <a href="/manage?mode=undo" class="big-button btn-orange">
+            撤銷轉移<br><small style="font-size: 0.8rem; font-weight: normal;">(權限模式)</small>
+        </a>
+        {% endif %}
     {% endif %}
     
     <a href="/all_data" class="big-button btn-green">

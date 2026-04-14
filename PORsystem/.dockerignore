@@ -1,0 +1,25 @@
+# 排除技術文檔，不進入 Docker 映像檔
+doc/
+*.md
+.git
+.gitignore
+
+# 排除敏感開發數據
+instance/*.sqlite
+instance/*.txt
+!instance/projection.sqlite
+!instance/log_2026.txt
+
+# 排除 Python 暫存與環境
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+
+# 排除磁碟映像與壓縮包
+*.zip
+*.bat

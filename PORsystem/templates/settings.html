@@ -1,24 +1,31 @@
 {% extends "layout.html" %}
-{% block title %}新增資料{% endblock %}
+{% block title %}{% if item %}修改資料{% else %}新增資料{% endif %}{% endblock %}
 
 {% block content %}
-<h1>新增看板項目</h1>
+<h1>{% if item %}修改看板項目{% else %}新增看板項目{% endif %}</h1>
 
 <div style="background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-    <form action="/add_item" method="post">
+    <form action="{% if item %}{{ url_for('edit_item', item_id=item.id) }}{% else %}/add_item{% endif %}" method="post">
+        {% if not item %}
         <p style="color: #666; font-size: 0.9rem; margin-bottom: 20px;">序號將由系統根據排列順序自動生成 (01-99)。</p>
+        {% endif %}
         
         <div style="margin-bottom: 20px;">
             <label style="display: block; margin-bottom: 8px; font-weight: bold;">內容描述:</label>
-            <textarea name="content" rows="3" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1.1rem; box-sizing: border-box;" placeholder="請輸入訂單詳情..."></textarea>
+            <textarea name="content" rows="3" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1.1rem; box-sizing: border-box;" placeholder="請輸入訂單詳情...">{{ item.content if item else '' }}</textarea>
         </div>
 
         <div style="margin-bottom: 20px;">
             <label style="display: block; margin-bottom: 8px; font-weight: bold;">備註 (選填):</label>
-            <input type="text" name="remark" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; box-sizing: border-box;" placeholder="例如：急件、自取、下午兩點到...">
+            <input type="text" name="remark" value="{{ item.remark if item else '' }}" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; box-sizing: border-box;" placeholder="例如：急件、自取、下午兩點到...">
         </div>
         
-        <button type="submit" style="background: var(--success); font-size: 1.5rem;">新增至 [{{ workflow_stages[0].name }}] 欄位</button>
+        <button type="submit" style="background: var(--success); font-size: 1.5rem;">
+            {% if item %}確認修改{% else %}新增至 [{{ workflow_stages[0].name }}] 欄位{% endif %}
+        </button>
+        {% if item %}
+        <a href="{{ url_for('manage_page') }}" style="display: block; text-align: center; margin-top: 15px; color: #666; text-decoration: none;">取消返回</a>
+        {% endif %}
     </form>
 </div>
 {% endblock %}

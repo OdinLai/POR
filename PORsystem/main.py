@@ -52,11 +52,61 @@ def get_initial_stage():
     """獲取初始階段 ID"""
     return get_inf_config('Workflow', 'initial_stage', 'ORDER')
 
-def format_stay_time(start_time):
-    """將時間差格式化為 分、時分、天時"""
-    if not start_time: return ""
-    delta = datetime.now() - start_time
+# 原始 format_stay_time 已併入 format_item_date 與 format_stay_time_diff
+
+import socket
+
+def get_lan_ip():
+    """獲取真實的區域網路 IP，支援從環境變數或 config.inf 手動覆蓋"""
+    ip_source = "None"
+    final_ip = "127.0.0.1"
+
+    # 1. 優先從環境變數讀取（由啟動腳本自動注入）
+    env_ip = os.environ.get('HOST_IP')
+    if env_ip and '.' in env_ip and not env_ip.startswith('$'):
+        final_ip = env_ip.strip()
+        ip_source = "Environment Variable (HOST_IP)"
+    else:
+        # 2. 其次從 config.inf 讀取手動設定
+        manual_ip = get_inf_config('System', 'manual_ip')
+        if manual_ip and manual_ip.strip():
+            final_ip = manual_ip.strip()
+            ip_source = "config.inf (manual_ip)"
+        else:
+            try:
+                # 3. 最後嘗試自動偵測
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.settimeout(2)
+                s.connect(("8.8.8.8", 80))
+                final_ip = s.getsockname()[0]
+                s.close()
+                ip_source = "Auto-detected (Socket)"
+            except Exception as e:
+                ip_source = f"Fallback (Error: {str(e)})"
+                final_ip = "127.0.0.1"
+
+    print(f"--- IP Detection ---")
+    print(f"Source: {ip_source}")
+    print(f"Result: {final_ip}")
+    print(f"--------------------")
+    return final_ip
+
+def format_item_date(dt, date_format, end_dt=None):
+    """根據設定決定顯示 原始日期 或 停留時間 (支援計算階段差值)"""
+    if not dt: return ""
+    if date_format == '1': # 顯示停留時間
+        # 如果提供了結束時間，則計算階段內的停留時間；否則計算到現在的總時間
+        reference_time = end_dt if end_dt else datetime.now()
+        return format_stay_time_diff(dt, reference_time)
+    else: # 顯示 MM/DD
+        return dt.strftime('%m/%d')
+
+def format_stay_time_diff(start_time, end_time):
+    """計算並格式化兩個時間點之間的差值"""
+    if not start_time or not end_time: return ""
+    delta = end_time - start_time
     total_seconds = int(delta.total_seconds())
+    if total_seconds < 0: total_seconds = 0
     if total_seconds < 60: return "剛剛"
     
     minutes = (total_seconds // 60) % 60
@@ -69,28 +119,6 @@ def format_stay_time(start_time):
         return f"{hours}時{minutes}分"
     else:
         return f"{minutes}分"
-
-import socket
-
-def get_lan_ip():
-    """獲取真實的區域網路 IP（解決掛載多個虛擬網卡的問題）"""
-    try:
-        # 建立一個測試連線來獲取正確的出站網卡 IP
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except Exception:
-        return "127.0.0.1"
-
-def format_item_date(dt, date_format):
-    """根據設定決定顯示 原始日期 或 停留時間"""
-    if not dt: return ""
-    if date_format == '1': # 顯示停留時間
-        return format_stay_time(dt)
-    else: # 顯示 MM/DD
-        return dt.strftime('%m/%d')
 
 def touch_system_update():
     """標記系統發生了任何形式的資料變動（新增、轉移、刪除）"""
@@ -196,7 +224,6 @@ def show_page():
     stage_keys = [s['key'] for s in stages]
     
     for item in items:
-        # 將資料庫中的 JSON 日期字串轉換回 datetime 物件以供格式化
         dates_obj = item.stage_dates or {}
         p_item = {
             'id': item.id,
@@ -204,15 +231,36 @@ def show_page():
             'remark': item.remark,
             'current_stage': item.current_stage
         }
-        # 動態填充每個階段的顯示日期
-        for sk in [s['key'] for s in get_workflow_stages()]:
-            val = item.stage_dates.get(sk)
-            if isinstance(val, dict):
-                dt_str = val.get('date')
+        
+        # 獲取各階段的時間對象
+        stage_times = {}
+        for s in stages:
+            val = dates_obj.get(s['key'])
+            if val:
+                dt_str = val.get('date') if isinstance(val, dict) else val
+                try:
+                    stage_times[s['key']] = datetime.fromisoformat(dt_str)
+                except (ValueError, TypeError):
+                    stage_times[s['key']] = None
             else:
-                dt_str = val
-            dt = datetime.fromisoformat(dt_str) if dt_str else None
-            p_item[sk] = format_item_date(dt, date_format)
+                stage_times[s['key']] = None
+
+        # 動態填充每個階段的顯示日期，改用「階段差值」邏輯
+        for i, s in enumerate(stages):
+            sk = s['key']
+            dt = stage_times.get(sk)
+            if not dt:
+                p_item[sk] = ""
+                continue
+            
+            # 判斷是否有「下一階段」的時間作為結束點
+            next_dt = None
+            if i + 1 < len(stages):
+                next_sk = stages[i+1]['key']
+                next_dt = stage_times.get(next_sk)
+            
+            # 使用 format_item_date 計算差值
+            p_item[sk] = format_item_date(dt, date_format, end_dt=next_dt)
             
         processed_items.append(p_item)
 
@@ -262,65 +310,7 @@ def manage_page():
     # 在 undo 模式下，我們需要判斷「這個項目是否位於我能撤回的下一關」
     return render_template('manage.html', items=items, perms=user.permissions, mode=mode)
 
-@app.route('/all_data')
-def all_data_page():
-    items = SignboardItem.query.order_by(SignboardItem.updated_at.desc()).all()
-    workflow_stages = get_workflow_stages()
-    
-    processed_items = []
-    for item in items:
-        # 手動處理每個項目的階段數據，支援新舊格式
-        p_item = {
-            'id': item.id,
-            'content': item.content,
-            'remark': item.remark,
-            'current_stage_key': item.current_stage,
-            'history': []
-        }
-        
-        # 1. 處理「新增」紀錄 (CREATED)
-        # 若無 CREATED (舊資料)，則嘗試抓取第一個階段的時間
-        created_val = item.stage_dates.get('CREATED')
-        if not created_val:
-            # 找第一個有值的階段
-            for s in workflow_stages:
-                if item.stage_dates.get(s['key']):
-                    created_val = item.stage_dates.get(s['key'])
-                    break
-        
-        if created_val:
-            if isinstance(created_val, dict):
-                dt = datetime.fromisoformat(created_val['date']).strftime('%Y-%m-%d %H:%M')
-                user = created_val['user']
-            else:
-                dt = datetime.fromisoformat(created_val).strftime('%Y-%m-%d %H:%M')
-                user = "系統"
-            display_str = f"{dt} - {user}"
-        else:
-            display_str = "-"
-            
-        p_item['history'].append({'name': '新增', 'val': display_str})
-        
-        # 2. 處理各個 Workflow 階段
-        for s in workflow_stages:
-            val = item.stage_dates.get(s['key'])
-            if val:
-                if isinstance(val, dict):
-                    dt = datetime.fromisoformat(val['date']).strftime('%Y-%m-%d %H:%M')
-                    user = val['user']
-                else:
-                    dt = datetime.fromisoformat(val).strftime('%Y-%m-%d %H:%M')
-                    user = "未知"
-                display_val = f"{dt} - {user}"
-            else:
-                display_val = "-"
-            p_item['history'].append({'name': s['name'], 'val': display_val})
-            if s['key'] == item.current_stage:
-                p_item['current_stage_name'] = s['name']
-                
-        processed_items.append(p_item)
-
-    return render_template('all_data.html', items=processed_items)
+# 冗餘路由已由 all_data 統一接管
 
 # --- API 與資料操作 ---
 
@@ -347,8 +337,8 @@ def api_transfer():
         stage_keys = [s['key'] for s in stages]
         
         if target in stage_keys:
-            # 修正判定邏輯：檢查「當前階段」是否擁有轉移權限
-            if perms.stage_perms and perms.stage_perms.get(item.current_stage):
+            # 修正判定邏輯：檢查「當前階段」是否擁有轉移權限，或具備管理員身分
+            if session.get('is_admin') or (perms.stage_perms and perms.stage_perms.get(item.current_stage)):
                 # 更新日期紀錄
                 # 更新日期紀錄：同時儲存時間與操作者
                 dates_obj = dict(item.stage_dates or {})
@@ -365,7 +355,7 @@ def api_transfer():
             else:
                 return jsonify({'success': False, 'message': f'您沒有轉移至 {target} 的權限'})
                 
-        elif target == 'CLEAR' and perms.can_clear_delivery:
+        elif target == 'CLEAR' and (session.get('is_admin') or perms.can_clear_delivery):
             # 將時程 JSON 轉換為易讀字串供日誌使用
             timeline_str = ", ".join([f"{k}:{v}" for k, v in (item.stage_dates or {}).items()])
             
@@ -626,10 +616,36 @@ def settings_page():
         return redirect(url_for('admin_home'))
     return render_template('settings.html', perms=perms)
 
+@app.route('/edit_item/<int:item_id>', methods=['GET', 'POST'])
+def edit_item(item_id):
+    """編輯項目內容與備註"""
+    if 'user_id' not in session:
+        return redirect(url_for('index'))
+    
+    user = User.query.get(session['user_id'])
+    if not user.is_admin and not (user.permissions and user.permissions.can_add_order):
+        flash('您沒有修改項目的權限')
+        return redirect(url_for('admin_home'))
+    
+    item = SignboardItem.query.get(item_id)
+    if not item:
+        flash('找不到該項目')
+        return redirect(url_for('manage_page'))
+    
+    if request.method == 'POST':
+        item.content = request.form.get('content')
+        item.remark = request.form.get('remark')
+        db.session.commit()
+        touch_system_update()
+        flash('項目已更新')
+        return redirect(url_for('manage_page'))
+    
+    return render_template('settings.html', item=item, perms=user.permissions)
+
 @app.route('/add_item', methods=['POST'])
 def add_item():
     user = User.query.get(session['user_id'])
-    if not user.permissions.can_add_order:
+    if not user.is_admin and not (user.permissions and user.permissions.can_add_order):
         flash('您沒有新增訂單的權限')
         return redirect(url_for('settings_page'))
     

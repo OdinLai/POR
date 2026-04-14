@@ -5,17 +5,11 @@
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; max-width: 1200px; margin: 20px auto; padding: 0 20px;">
     <h1>{% if mode == 'undo' %}撤銷與修正管理{% else %}進度與庫存管理{% endif %}</h1>
     
-    <!-- 模式切換鈕 -->
-    <!-- 模式切換鈕 (無論是否為撤銷模式皆提供切換) -->
+    <!-- 角色模式切換鈕 (純前端篩選) -->
     <div style="background: #e9ecef; padding: 5px; border-radius: 30px; display: flex; gap: 5px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
-        <button id="btn-kanban" onclick="setMode('kanban')" class="mode-btn active">看板模式</button>
-        <button id="btn-role" onclick="setMode('role')" class="mode-btn">角色模式</button>
+        <button id="btn-kanban" onclick="setVisitMode('kanban')" class="mode-btn active">看板模式</button>
+        <button id="btn-role" onclick="setVisitMode('role')" class="mode-btn">角色模式</button>
     </div>
-    {% if mode == 'undo' %}
-    <div style="color: #666; font-size: 0.9rem; background: #fff3e0; padding: 6px 15px; border-radius: 20px; border: 1px solid #ffe0b2;">
-        <i class="fas fa-undo"></i> 撤銷模式
-    </div>
-    {% endif %}
 </div>
 
 <style>
@@ -24,8 +18,8 @@
         transition: all 0.3s ease; background: transparent; color: #6c757d;
     }
     .mode-btn.active { background: white; color: #007bff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    .row-item { transition: opacity 0.3s ease; }
-    .row-hidden { display: none; }
+    
+    .row-hidden { display: none !important; }
 
     .manage-wrapper {
         max-width: 1200px;
@@ -36,55 +30,81 @@
         background: #f1f8ff;
         border: 1px solid #c8e1ff;
         padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 20px;
+        border-radius: 12px;
+        margin-bottom: 25px;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     }
-    .config-card h3 { margin: 0; color: #0366d6; font-size: 1.2rem; }
+    .config-card h3 { margin: 0; color: #0056b3; font-size: 1.1rem; }
     .title-form { display: flex; gap: 10px; }
     .title-form input { 
-        padding: 8px 12px; 
-        border: 1px solid #ddd; 
-        border-radius: 4px; 
+        padding: 8px 15px; 
+        border: 1px solid #d1d9e6; 
+        border-radius: 8px; 
         width: 300px;
     }
     .data-table {
         width: 100%;
-        border-collapse: collapse;
+        border-collapse: separate;
+        border-spacing: 0;
         background: white;
-        border-radius: 8px;
+        border-radius: 12px;
         overflow: hidden;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
     }
     .data-table th {
-        background-color: #e3f2fd;
-        color: #333;
+        background-color: #f8fbff;
+        color: #495057;
         text-align: center;
-        padding: 15px;
-        border-bottom: 2px solid #2196F3;
+        padding: 18px 15px;
+        font-weight: 600;
+        border-bottom: 2px solid #e9ecef;
     }
     .data-table td {
-        padding: 15px;
-        border-bottom: 1px solid #eee;
+        padding: 18px 15px;
+        border-bottom: 1px solid #f1f3f5;
+        vertical-align: middle;
     }
-    .data-table tr:nth-child(even) { background-color: #f9f9f9; }
+    .data-table tr:hover { background-color: #fcfdfe; }
+    
     .btn {
-        padding: 6px 12px;
-        border-radius: 4px;
+        padding: 8px 18px;
+        border-radius: 8px;
         border: none;
         cursor: pointer;
-        font-size: 0.9rem;
-        transition: opacity 0.2s;
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
         display: inline-block;
         color: white;
+        text-decoration: none;
     }
-    .btn:hover { opacity: 0.8; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .btn-save { background-color: #28a745; }
     .btn-action { background-color: #007bff; }
     .btn-delete { background-color: #dc3545; }
-    .remark-text { font-size: 0.85rem; color: #666; display: block; margin-top: 4px; }
+    .btn-undo { background-color: #ff9800; }
+    .remark-text { font-size: 0.85rem; color: #868e96; display: block; margin-top: 5px; }
+    
+    .btn:disabled {
+        background: #f1f3f5 !important;
+        color: #ced4da !important;
+        cursor: not-allowed !important;
+        box-shadow: none !important;
+        transform: none !important;
+        border: 1px solid #dee2e6 !important;
+    }
+    
+    .stage-badge {
+        background: #f0f7ff;
+        color: #007bff;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
 </style>
 
 <div class="manage-wrapper">
@@ -98,12 +118,12 @@
     </div>
     {% endif %}
 
-    <h2>當前項目管理</h2>
+    <h2 style="margin-bottom: 20px; color: #343a40;">當前項目管理</h2>
     <table class="data-table">
         <thead>
             <tr>
-                {% if perms.can_delete %}
-                <th style="width: 100px;">刪除操作</th>
+                {% if perms.can_delete or session.is_admin %}
+                <th style="width: 100px;">刪除</th>
                 {% endif %}
                 <th style="width: 80px;">序號</th>
                 <th style="text-align: left;">內容</th>
@@ -113,39 +133,64 @@
         </thead>
         <tbody>
             {% for item in items %}
-            {% set can_move = perms.stage_perms.get(item.current_stage) or (item.current_stage == workflow_stages[-1].key and perms.can_clear_delivery) or perms.can_delete %}
+            {% set ns = namespace(next_stage_key=none, next_stage_name=none, current_idx=-1) %}
             
-            {# 預先計算撤回權限 #}
-            {% set ns_undo = namespace(prev_stage=none, can_undo=false) %}
             {% for s in workflow_stages %}
                 {% if s.key == item.current_stage %}
-                    {% if not loop.first %}
-                        {% set ns_undo.prev_stage = workflow_stages[loop.index0 - 1] %}
-                        {% if session.is_admin or (undo_mode == '2' and perms.stage_perms.get(ns_undo.prev_stage.key)) %}
-                            {% set ns_undo.can_undo = true %}
-                        {% endif %}
+                    {% set ns.current_idx = loop.index0 %}
+                    {% if not loop.last %}
+                        {% set ns.next_stage_key = workflow_stages[loop.index0 + 1].key %}
+                        {% set ns.next_stage_name = workflow_stages[loop.index0 + 1].name %}
                     {% endif %}
                 {% endif %}
             {% endfor %}
 
-            <tr class="row-item" 
-                data-has-perm="{{ 'true' if can_move else 'false' }}" 
-                data-can-undo="{{ 'true' if ns_undo.can_undo else 'false' }}"
-                style="border-bottom: 1px solid #eee;">
-                {% if perms.can_delete %}
+            {# 權限判定 #}
+            {% set has_move_perm = session.is_admin or (perms.stage_perms.get(item.current_stage) if perms and perms.stage_perms else false) %}
+            {% set has_clear_perm = session.is_admin or (perms.can_clear_delivery if perms else false) %}
+            
+            {# 撤回權限判定 #}
+            {% set can_undo_this = false %}
+            {% if ns.current_idx > 0 %}
+                {% set prev_stage = workflow_stages[ns.current_idx - 1] %}
+                {% if session.is_admin or (undo_mode == '2' and perms.stage_perms.get(prev_stage.key)) %}
+                    {% set can_undo_this = true %}
+                {% endif %}
+            {% endif %}
+
+            {# 根據目前模式(Normal/Undo)決定該行是否屬於「角色模式可見」 #}
+            {% if mode == 'undo' %}
+                {% set is_active_for_role = can_undo_this %}
+            {% else %}
+                {% if ns.next_stage_key %}
+                    {% set is_active_for_role = has_move_perm %}
+                {% else %}
+                    {% set is_active_for_role = has_clear_perm %}
+                {% endif %}
+            {% endif %}
+
+            <tr class="row-item" data-id="{{ item.id }}" data-active="{{ 'true' if is_active_for_role else 'false' }}">
+                {% if perms.can_delete or session.is_admin %}
                 <td style="text-align: center;">
                     <form action="/manage/delete/{{ item.id }}" method="POST" onsubmit="return confirm('確定要刪除此項目嗎？');">
                         <button type="submit" class="btn btn-delete">刪除</button>
                     </form>
                 </td>
                 {% endif %}
-                <td style="font-weight: bold; color: #1a73e8; text-align: center;">{{ "%02d"|format(loop.index) }}</td>
+                <td style="font-weight: bold; color: #007bff; text-align: center;">{{ "%02d"|format(loop.index) }}</td>
                 <td>
-                    <div style="font-weight: 500;">{{ item.content }}</div>
-                    {% if item.remark %}<span class="remark-text">備註: {{ item.remark }}</span>{% endif %}
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500; font-size: 1.05rem;">{{ item.content }}</div>
+                            {% if item.remark %}<span class="remark-text">備註: {{ item.remark }}</span>{% endif %}
+                        </div>
+                        {% if perms.can_add_order or session.is_admin %}
+                        <a href="{{ url_for('edit_item', item_id=item.id) }}" class="btn" style="background: #6c757d; padding: 4px 10px; font-size: 0.8rem; flex-shrink: 0;">修改</a>
+                        {% endif %}
+                    </div>
                 </td>
                 <td style="text-align: center;">
-                    <span style="background: #e1f5fe; color: #0288d1; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">
+                    <span class="stage-badge">
                         {% for s in workflow_stages %}
                             {% if s.key == item.current_stage %}{{ s.name }}{% endif %}
                         {% endfor %}
@@ -153,71 +198,36 @@
                 </td>
                 <td style="text-align: center;">
                     {% if mode == 'undo' %}
-                        {# 撤銷模式按鈕邏輯 #}
-                        {% set ns_undo = namespace(prev_stage=none, can_undo=false) %}
-                        {% for s in workflow_stages %}
-                            {% if s.key == item.current_stage %}
-                                {% if not loop.first %}
-                                    {% set ns_undo.prev_stage = workflow_stages[loop.index0 - 1] %}
-                                    {% if session.is_admin or (undo_mode == '2' and perms.stage_perms.get(ns_undo.prev_stage.key)) %}
-                                        {% set ns_undo.can_undo = true %}
-                                    {% endif %}
-                                {% endif %}
-                            {% endif %}
-                        {% endfor %}
-
-                        {% if ns_undo.prev_stage %}
-                            {% if ns_undo.can_undo %}
-                                <button onclick="undoItem('{{ item.id }}', '{{ ns_undo.prev_stage.name }}')" 
-                                        class="btn btn-save" style="background: #ffa000;">
-                                    撤回至{{ ns_undo.prev_stage.name }}
+                        {% if ns.current_idx > 0 %}
+                            {% set prev_stage = workflow_stages[ns.current_idx - 1] %}
+                            {% if can_undo_this %}
+                                <button onclick="undoItem('{{ item.id }}', '{{ prev_stage.name }}')" class="btn btn-undo">
+                                    撤回至{{ prev_stage.name }}
                                 </button>
                             {% else %}
-                                <button class="btn" disabled style="background: #e0e0e0; color: #aaa; cursor: not-allowed; border: 1px solid #ccc;">
-                                    撤回至{{ ns_undo.prev_stage.name }}
-                                </button>
+                                <button class="btn" disabled>撤回至{{ prev_stage.name }}</button>
                             {% endif %}
                         {% else %}
-                            <span style="color: #bbb; font-size: 0.8rem;">已在最底層</span>
+                            <span style="color: #adb5bd; font-size: 0.85rem;">初始階段</span>
                         {% endif %}
-
                     {% else %}
-                        {# 原本的轉移按鈕邏輯 #}
-                        {% set ns = namespace(next_stage=none, stage_index=0) %}
-                        {% set colors = ['#007bff', '#ffc107', '#17a2b8', '#6610f2', '#fd7e14', '#28a745', '#e83e8c', '#6f42c1', '#198754', '#795548'] %}
-                        
-                        {% for s in workflow_stages %}
-                            {% if s.key == item.current_stage %}
-                                {% set ns.stage_index = loop.index0 %}
-                                {% if not loop.last %}
-                                    {% set ns.next_stage = workflow_stages[loop.index] %}
-                                {% endif %}
-                            {% endif %}
-                        {% endfor %}
-
-                        {% if ns.next_stage %}
-                            {% set btn_color = colors[ns.stage_index % colors|length] %}
-                            {% set has_perm = perms.stage_perms.get(item.current_stage) if perms.stage_perms else false %}
+                        {% if ns.next_stage_key %}
+                            {% set colors = ['#007bff', '#ffc107', '#17a2b8', '#6610f2', '#fd7e14', '#28a745', '#e83e8c', '#6f42c1', '#198754', '#795548'] %}
+                            {% set btn_color = colors[ns.current_idx % colors|length] %}
+                            {% set text_color = '#333' if btn_color == '#ffc107' else 'white' %}
                             
-                            {% if has_perm %}
-                                {% set text_color = '#333' if btn_color == '#ffc107' else 'white' %}
-                                <button onclick="transferItem('{{ item.id }}', '{{ ns.next_stage.key }}')" 
-                                        class="btn btn-action" 
-                                        style="background: {{ btn_color }}; color: {{ text_color }};">
-                                    轉移至{{ ns.next_stage.name }}
+                            {% if has_move_perm %}
+                                <button onclick="transferItem('{{ item.id }}', '{{ ns.next_stage_key }}')" class="btn" style="background: {{ btn_color }}; color: {{ text_color }};">
+                                    轉移至{{ ns.next_stage_name }}
                                 </button>
                             {% else %}
-                                <button class="btn btn-action" disabled 
-                                        style="background: #e0e0e0; color: #aaa; cursor: not-allowed; border: 1px solid #ccc; opacity: 0.8;">
-                                    轉移至{{ ns.next_stage.name }}
-                                </button>
+                                <button class="btn" disabled>轉移至{{ ns.next_stage_name }}</button>
                             {% endif %}
                         {% else %}
-                            {# 最後一個階段，顯示清除按鈕 #}
-                            {% if perms.can_clear_delivery %}
-                                <button onclick="transferItem('{{ item.id }}', 'CLEAR')" class="btn btn-action" style="background:#dc3545;">從看板清除</button>
+                            {% if has_clear_perm %}
+                                <button onclick="transferItem('{{ item.id }}', 'CLEAR')" class="btn btn-delete">從看板清除</button>
                             {% else %}
-                                <button class="btn btn-action" disabled style="background:#e0e0e0; color:#aaa; cursor:not-allowed; opacity: 0.8; border: 1px solid #ccc;">從看板清除</button>
+                                <button class="btn btn-delete" disabled>從看板清除</button>
                             {% endif %}
                         {% endif %}
                     {% endif %}
@@ -229,16 +239,14 @@
 </div>
 
 <script>
-    function setMode(mode) {
+    function setVisitMode(m) {
         const rows = document.querySelectorAll('.row-item');
         const btnKanban = document.getElementById('btn-kanban');
         const btnRole = document.getElementById('btn-role');
-        const isUndoMode = {{ 'true' if mode == 'undo' else 'false' }};
-
-        if (mode === 'role') {
+        
+        if (m === 'role') {
             rows.forEach(row => {
-                const hasPerm = isUndoMode ? (row.getAttribute('data-can-undo') === 'true') : (row.getAttribute('data-has-perm') === 'true');
-                if (!hasPerm) {
+                if (row.getAttribute('data-active') !== 'true') {
                     row.classList.add('row-hidden');
                 }
             });
@@ -255,52 +263,24 @@
 
     function transferItem(id, target) {
         if (target === 'CLEAR' && !confirm('是否確定從看板清除？')) return;
-        
         fetch('/api/transfer', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({id: id, target: target})
-        }).then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('錯誤: ' + data.message);
-            }
+        }).then(res => res.json()).then(data => {
+            if (data.success) location.reload(); else alert('操作失敗: ' + (data.message || '未知錯誤'));
         });
-    }
-
-    function deleteItem(itemId) {
-        if (!confirm('確定要刪除此項目嗎？')) return;
-        fetch('/manage/delete/' + itemId, {
-            method: 'POST',
-        }).then(() => location.reload());
     }
 
     function undoItem(id, prevStageName) {
         if (!confirm('確定要將此項目「撤回」至 ' + prevStageName + ' 嗎？')) return;
-        
         fetch('/api/undo_transfer', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({id: id})
-        }).then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('錯誤: ' + data.message);
-            }
+        }).then(res => res.json()).then(data => {
+            if (data.success) location.reload(); else alert('撤回失敗: ' + (data.message || '未知錯誤'));
         });
     }
-
-    // 當頁面載入時
-    window.onload = function() {
-        const isUndoMode = {{ 'true' if mode == 'undo' else 'false' }};
-        // 撤銷模式下，預設自動開啟「角色過濾」，讓介面清爽只顯示可撤回項目
-        if (isUndoMode) {
-            setMode('role');
-        }
-    };
 </script>
 {% endblock %}

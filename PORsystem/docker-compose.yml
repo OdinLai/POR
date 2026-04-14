@@ -12,6 +12,7 @@ services:
       - FLASK_APP=main.py
       - FLASK_DEBUG=1
       - REMOTE_ACCESS_ENABLED=false
+      - HOST_IP=${HOST_IP}
     restart: always
 
   # 未來可擴充 rclone 定時備份容器

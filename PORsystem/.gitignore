@@ -5,3 +5,4 @@ __pycache__/
 venv/
 .env
 POR_Update_IP_Fix.zip
+*.tar

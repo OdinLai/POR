@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  signboard-app:
+    image: signboard_app:latest
+    container_name: signboard_app
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./instance:/app/instance
+      - ./config.inf:/app/config.inf
+    environment:
+      - FLASK_APP=main.py
+      - FLASK_DEBUG=0
+      - REMOTE_ACCESS_ENABLED=false
+      - HOST_IP=${HOST_IP}
+    restart: always

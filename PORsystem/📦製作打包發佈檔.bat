@@ -1,6 +1,6 @@
 @echo off
 title POR Signboard - Create Release Package
-set IMAGE_NAME=signboard_app
+set IMAGE_NAME=signboard-app
 set TAG=latest
 set OUTPUT_FILE=release\POR_Signboard_v1.tar
 

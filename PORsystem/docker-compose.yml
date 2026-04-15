@@ -1,5 +1,5 @@
 services:
-  app:
+  signboard-app:
     build: .
     container_name: signboard_app
     ports:

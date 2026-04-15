@@ -1,6 +1,7 @@
 @echo off
 title POR Signboard - Create Release Package
-set IMAGE_NAME=signboard-app
+set SERVICE_NAME=signboard-app
+set IMAGE_NAME=signboard_app
 set TAG=latest
 set OUTPUT_FILE=release\POR_Signboard_v1.tar
 
@@ -10,7 +11,7 @@ echo ==========================================
 echo.
 
 echo [1/3] Building latest Docker image...
-call docker-compose build %IMAGE_NAME%
+call docker-compose build %SERVICE_NAME%
 if errorlevel 1 (
     echo [ERROR] Build failed.
     pause

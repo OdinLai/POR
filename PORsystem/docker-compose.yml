@@ -1,5 +1,6 @@
 services:
   signboard-app:
+    image: signboard_app:latest
     build: .
     container_name: signboard_app
     ports:

@@ -29,8 +29,59 @@ if errorlevel 1 (
 )
 
 echo.
-echo [3/3] Preparing deployment files...
-copy /y config.inf release\config.inf >nul
+echo [3/3] Finalizing deployment scripts...
+:: 移除舊的高風險腳本（若存在）
+if exist "release\🚀一鍵部署看板.bat" del /q "release\🚀一鍵部署看板.bat"
+
+:: 建立高相容性的 deploy.bat
+(
+echo @echo off
+echo setlocal
+echo title POR_Signboard_Deploy
+echo.
+echo :: 1. Setup instance folder
+echo if not exist instance mkdir instance
+echo.
+echo :: 2. Detect IP
+echo echo Detecting LAN IP...
+echo powershell -NoProfile -Command "(Get-NetRoute -DestinationPrefix 0.0.0.0/0 | Get-NetIPInterface | Where-Object ConnectionState -eq 'Connected' | Get-NetIPAddress -AddressFamily IPv4 | Select-Object -First 1).IPAddress" > ip.txt
+echo set /p HOST_IP=^<ip.txt
+echo del ip.txt
+echo if "%%HOST_IP%%"=="" set HOST_IP=127.0.0.1
+echo echo Detected IP: %%HOST_IP%%
+echo.
+echo :: 3. Load Image (if needed)
+echo if exist %OUTPUT_FILE% (
+echo     docker image inspect %IMAGE_NAME%:%TAG% ^>nul 2^>^&1
+echo     if errorlevel 1 (
+echo         echo Loading Image...
+echo         docker load -i %OUTPUT_FILE%
+echo     )
+echo )
+echo.
+echo :: 4. Start System
+echo echo Starting Docker Services...
+echo docker-compose down ^>nul 2^>^&1
+echo docker-compose up -d
+echo if errorlevel 1 (
+echo     echo [ERROR] Docker failed to start.
+echo     docker-compose logs
+echo     pause 
+echo     exit /b
+echo )
+echo.
+echo :: 5. Launch Browser (Kiosk mode priority)
+echo echo Launching Signboard in 5 seconds...
+echo timeout /t 5
+echo start chrome --kiosk "http://127.0.0.1:5000/show" --user-data-dir="%%TEMP%%\POR_Chrome" --no-first-run
+echo if errorlevel 1 (
+echo     start http://127.0.0.1:5000/show
+echo )
+echo.
+echo === DEPLOYMENT SUCCESSFUL ===
+echo pause
+) > release\deploy.bat
+
 echo Done.
 
 echo.

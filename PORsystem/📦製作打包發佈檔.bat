@@ -39,8 +39,8 @@ echo @echo off
 echo setlocal
 echo title POR_Signboard_Deploy
 echo.
-echo :: 1. Setup instance folder
-echo if not exist instance mkdir instance
+echo :: 1. Setup database folder
+echo if not exist database mkdir database
 echo.
 echo :: 2. Detect IP
 echo echo Detecting LAN IP...

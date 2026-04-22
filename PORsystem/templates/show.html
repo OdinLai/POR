@@ -7,11 +7,11 @@
     <title>{{ site_title }}</title>
     <style>
         :root {
-            --header-blue: #e3f2fd;
+            --primary: {{ primary_color }};
+            --secondary: {{ secondary_color }};
             --border-color: #eee;
             --text-main: #222;
             --row-height: 100px;
-            /* 進一步增加行高以適應日期 */
         }
 
         body {
@@ -24,7 +24,7 @@
         }
 
         h1 {
-            background: linear-gradient(135deg, #2196F3, #00BCD4);
+            background: {{ primary_color or 'linear-gradient(135deg, #2196F3, #00BCD4)' }};
             color: white;
             text-align: center;
             padding: 12px 0;
@@ -55,8 +55,8 @@
 
         .table-header {
             display: flex;
-            background: var(--header-blue);
-            border-bottom: 3px solid #1a73e8;
+            background: var(--secondary);
+            border-bottom: 3px solid var(--primary);
             z-index: 10;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
         }
@@ -67,8 +67,8 @@
             padding: 15px 0;
             font-size: 1.8rem;
             font-weight: bold;
-            color: #0d47a1;
-            border-right: 3px solid #ccc;
+            color: var(--primary);
+            border-right: 3px solid rgba(0,0,0,0.05);
         }
 
         .col-header:last-child {
@@ -261,49 +261,49 @@
             });
         }
 
+        let isScrollingActive = false;
+        let needsReload = false;
+
         function startAutoScroll() {
             const wrapper = document.getElementById('scroll-wrapper');
             const container = document.getElementById('scroll-container');
 
-            // 1. 溢出判斷：只有當「真實資料 + 裝飾空列」總高度大於容器時才處理捲動邏輯
-            // 但為了讓 17 筆也能捲到頂，我們通常會啟動。
-            // 根據需求：沒滿出來（沒出現捲軸）就不要捲動
-            if (container.scrollHeight <= wrapper.clientHeight) {
-                console.log("內容未溢出，無需捲動");
-                return;
-            }
-
-            // 只取真實列
             const allRows = container.querySelectorAll('.row');
             const realRows = Array.from(allRows).filter(r => !r.classList.contains('empty-row'));
             
             console.log("偵測到真實資料列數:", realRows.length);
             if (realRows.length === 0) return;
 
+            // 2. 溢出判斷：只有當「最後一筆真實資料」的位置超出容器高度時，才啟動捲動
+            const lastRealRow = realRows[realRows.length - 1];
+            const isOverflowing = (lastRealRow.offsetTop + lastRealRow.offsetHeight) > wrapper.clientHeight;
+            
+            if (!isOverflowing) {
+                console.log("資料量未超出螢幕，維持靜態顯示");
+                isScrollingActive = false;
+                return;
+            }
+
+            isScrollingActive = true;
             let currentIndex = 0;
             const scrollInterval = parseInt("{{ scroll_speed_ms or 3000 }}");
-            let isWaitingAtEnd = false;
-
+            
             setInterval(() => {
-                if (isWaitingAtEnd) return;
-
                 currentIndex++;
 
                 if (currentIndex >= realRows.length) {
+                    // 如果循環結束且有待處理的重整請求，則在此時刷新
+                    if (needsReload) {
+                        console.log("捲動週期結束，執行延遲重整...");
+                        location.reload();
+                        return;
+                    }
                     // 已經循環完畢，立刻回第一筆
                     wrapper.scrollTo({ top: 0, behavior: 'smooth' });
                     currentIndex = 0;
                 } else {
                     const targetOffset = realRows[currentIndex].offsetTop;
                     wrapper.scrollTo({ top: targetOffset, behavior: 'smooth' });
-
-                    // 如果捲到了「最後一筆真實資料」，停留 3 秒
-                    if (currentIndex === realRows.length - 1) {
-                        isWaitingAtEnd = true;
-                        setTimeout(() => {
-                            isWaitingAtEnd = false;
-                        }, scrollInterval);
-                    }
                 }
             }, scrollInterval);
         }
@@ -316,7 +316,13 @@
                     .then(res => res.json())
                     .then(data => {
                         if (data.success && data.timestamp > initialTs) {
-                            location.reload(); // 偵測到變動，執行智慧刷新
+                            if (!isScrollingActive) {
+                                console.log("靜態模式：偵測到更新，立即刷新");
+                                location.reload(); 
+                            } else {
+                                console.log("捲動模式：偵測到更新，標記為延遲刷新");
+                                needsReload = true;
+                            }
                         }
                     })
                     .catch(err => console.log('輪詢失敗，可能是網路暫時中斷'));
@@ -328,24 +334,70 @@
             startAutoScroll();
             startSmartRefresh();
 
-            // 補回定時自動刷新邏輯，確保「停留時間」能準確跳動
-            const regularRefreshMs = ({{ refresh_seconds or 60 }}) * 1000;
-        setTimeout(() => {
-            location.reload();
-        }, regularRefreshMs);
-    };
+            // 移除舊式的 60 秒強制定時整理，改為極長保護時間 (例如 1 小時)
+            setTimeout(() => { location.reload(); }, 3600000);
+        };
     </script>
-    <!-- 底部管理資訊引導 (還原至先前佈局) -->
-    <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.85); color: white; 
-                padding: 12px 60px; font-size: 1rem; display: flex; justify-content: flex-start; align-items: center; gap: 30px; 
-                z-index: 10000; border-top: 2px solid rgba(255,235,59,0.3);">
-        <div style="font-weight: bold; white-space: nowrap;">
-            管理入口：<span style="color: #ffeb3b;">http://{{ lan_ip }}:5000/manage</span>
+    <!-- 底部資訊列：左側連線資訊 / 右側布告欄 -->
+    <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9); color: white; 
+                padding: 10px 40px; font-size: 1rem; display: flex; justify-content: space-between; align-items: center; 
+                z-index: 10000; border-top: 2px solid rgba(255,235,59,0.3); box-sizing: border-box; height: 60px;">
+        
+        <!-- 左側：連線網址 -->
+        <div style="flex: 0 0 35%; display: flex; flex-direction: column; justify-content: center; border-right: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-weight: bold; white-space: nowrap; color: #ffeb3b; font-size: 1.1rem;">
+                管理入口：<span style="color: #fff; letter-spacing: 1px;">{{ manage_url }}</span>
+            </div>
+            <div style="font-size: 0.75rem; opacity: 0.6; font-style: italic;">
+                * 雲端管理網址由系統配發
+            </div>
         </div>
-        <div style="font-size: 0.8rem; opacity: 0.7; font-style: italic; white-space: nowrap;">
-            * 請確保裝置與看板連於同一網路
+
+        <!-- 右側：布告欄 (內容由 config.inf 驅動，色彩自適應) -->
+        <div style="flex: 1; padding: 0 40px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+            <div id="bulletin-paging-box" style="width: 100%; text-align: center; font-size: 1.5rem; font-weight: bold; color: {{ bulletin_color }}; 
+                                              transition: opacity 0.5s ease-in-out; opacity: 1; letter-spacing: 1px;">
+                <!-- JS 會在此填入內容 -->
+            </div>
         </div>
     </div>
+
+    <script>
+        // 布告欄翻頁邏輯 - 優化空間與字數平衡
+        (function() {
+            const rawText = "{{ bulletin_text }}".trim();
+            const box = document.getElementById('bulletin-paging-box');
+            if (!rawText || !box) return;
+
+            // 每頁顯示的最大字數 (可根據比例調整)
+            const charsPerPage = 75; 
+            const pages = [];
+            
+            // 將長文字按字數切分
+            for (let i = 0; i < rawText.length; i += charsPerPage) {
+                pages.push(rawText.substring(i, i + charsPerPage));
+            }
+
+            let currentPage = 0;
+            function updatePage() {
+                // 淡出
+                box.style.opacity = 0;
+                setTimeout(() => {
+                    box.innerText = pages[currentPage];
+                    // 淡入
+                    box.style.opacity = 1;
+                    currentPage = (currentPage + 1) % pages.length;
+                }, 500);
+            }
+
+            if (pages.length > 0) {
+                updatePage();
+                if (pages.length > 1) {
+                    setInterval(updatePage, 5000); // 每 5 秒換一頁
+                }
+            }
+        })();
+    </script>
     <script>
         /**
          * QRious v4.0.2 | (C) 2017 Alasdair Mercer | GPL v3 License
@@ -360,7 +412,7 @@
                     qrContainer.innerHTML = '<canvas id="qr-canvas"></canvas>';
                     new QRious({
                         element: document.getElementById('qr-canvas'),
-                        value: "http://{{ lan_ip }}:5000/manage",
+                        value: "{{ manage_url }}",
                         size: 110,
                         level: 'H',
                         foreground: 'black',

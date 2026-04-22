@@ -37,7 +37,16 @@
     <a href="/users" class="big-button btn-purple">
         管理用戶<br><small style="font-size: 0.8rem; font-weight: normal;">(權限分配)</small>
     </a>
+    <a href="/dashboard_settings" class="big-button btn-brown">
+        看板設定<br><small style="font-size: 0.8rem; font-weight: normal;">(標題/色系/階段)</small>
+    </a>
     {% endif %}
+
+    {% for plugin in active_plugins %}
+    <a href="{{ plugin.url }}" class="big-button {{ plugin.color_class }}">
+        {{ plugin.icon }} {{ plugin.name }}
+    </a>
+    {% endfor %}
 
     <a href="/change_password" class="big-button btn-yellow">
         修改密碼

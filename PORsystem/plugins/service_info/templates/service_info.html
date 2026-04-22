@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+{% block title %}版本與加值服務{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 40px auto; padding: 0 20px;">
+    <div style="background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 30px; border: 1px solid #eef2f7;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f4f8; padding-bottom: 15px; margin-bottom: 25px;">
+            <h1 style="margin: 0; color: #2c3e50; font-size: 1.8rem;">🔖 版本與服務資訊</h1>
+            <a href="/admin_home" style="text-decoration: none; color: #7f8c8d; font-weight: bold;">← 返回主選單</a>
+        </div>
+
+        <div style="margin-bottom: 30px;">
+            <h3 style="color: #3498db; margin-bottom: 10px;">系統版本：{{ service.version }}</h3>
+            <p style="color: #95a5a6; font-size: 0.9rem;">發布日期：{{ service.release_date }}</p>
+        </div>
+
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 30px;">
+            <h4 style="margin-top: 0; color: #2c3e50;">💎 當前案場服務：{{ service.plan_name }}</h4>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                <thead>
+                    <tr style="text-align: left; border-bottom: 1px solid #dee2e6;">
+                        <th style="padding: 10px;">加值模組名稱</th>
+                        <th style="padding: 10px;">狀態</th>
+                        <th style="padding: 10px;">參考對價</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for addon in service.addons %}
+                    <tr style="border-bottom: 1px dotted #dee2e6;">
+                        <td style="padding: 12px; color: #34495e;">{{ addon.name }}</td>
+                        <td style="padding: 12px;">
+                            {% if addon.status == '已開通' %}
+                            <span style="background: #d4edda; color: #155724; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem;">{{ addon.status }}</span>
+                            {% else %}
+                            <span style="background: #fff3cd; color: #856404; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem;">{{ addon.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 12px; color: #7f8c8d;">{{ addon.price }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div style="border-left: 4px solid #ffc107; background: #fffde7; padding: 15px; border-radius: 4px;">
+            <p style="margin: 0; color: #856404; font-size: 0.95rem;">
+                <strong>💡 續約提醒：</strong><br>
+                {{ service.renewal_note }}
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

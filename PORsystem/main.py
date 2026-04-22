@@ -1,23 +1,32 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from models import db, User, Permission, SignboardItem, HistoryLog, SystemConfig
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
+import importlib
 from sqlalchemy import func
 import configparser
+import requests
+import shutil
+import threading
+import json
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 
-app = Flask(__name__, instance_relative_config=True)
-# 確保 instance 資料夾存在
-try:
-    os.makedirs(app.instance_path, exist_ok=True)
-except OSError:
-    pass
+app = Flask(__name__)
+# 確保資料庫資料夾存在
+db_dir = os.path.join(os.path.dirname(__file__), 'database')
+os.makedirs(db_dir, exist_ok=True)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.instance_path, 'projection.sqlite')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(db_dir, 'projection.sqlite')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'signboard-secret-key-12345'
 
 db.init_app(app)
+
+# 全域追蹤最後更新時間 (用於前端智慧刷新)
+latest_update_ts = int(datetime.now().timestamp())
 
 # 輔助函式：獲取系統配置
 def get_config(key, default=None):
@@ -130,15 +139,298 @@ def touch_system_update():
         config = SystemConfig(key='last_system_update', value=now_str)
         db.session.add(config)
     db.session.commit()
+    
+    global latest_update_ts
+    latest_update_ts = int(float(now_str))
+    
+    trigger_silent_backup()
+
+@app.route('/dashboard_settings')
+def dashboard_settings():
+    if not session.get('is_admin'):
+        flash("權限不足，僅管理員可進入看板設定。")
+        return redirect(url_for('admin_home'))
+    
+    workflow_stages = get_workflow_stages()
+    primary_color = get_inf_config('Display', 'primary_color', '#007bff')
+    site_title = get_inf_config('Display', 'site_title', 'POR 投影看板系統')
+    
+    return render_template('dashboard_settings.html', 
+                           workflow_stages=workflow_stages,
+                           primary_color=primary_color,
+                           site_title=site_title)
+
+@app.route('/update_title', methods=['POST'])
+def update_title():
+    if not session.get('is_admin'): return "403", 403
+    new_title = request.form.get('new_title', '').strip()
+    if new_title:
+        config = configparser.ConfigParser()
+        config.read('config.inf', encoding='utf-8')
+        if 'Display' not in config: config.add_section('Display')
+        config.set('Display', 'site_title', new_title)
+        with open('config.inf', 'w', encoding='utf-8') as f:
+            config.write(f)
+        flash(f'看板標題已更新')
+    return redirect(url_for('manage_page'))
+
+@app.route('/update_theme', methods=['POST'])
+def update_theme():
+    if not session.get('is_admin'): return "403", 403
+    theme_key = request.form.get('theme_key', 'classic_blue')
+    
+    config = configparser.ConfigParser()
+    config.read('config.inf', encoding='utf-8')
+    if 'Display' not in config: config.add_section('Display')
+    config.set('Display', 'theme', theme_key)
+    
+    with open('config.inf', 'w', encoding='utf-8') as f:
+        config.write(f)
+    
+    touch_system_update() # 觸發大螢幕看板自動刷新
+    theme_name = THEMES.get(theme_key, {}).get("name", "預設")
+    flash(f'佈景主題已切換至 {theme_name}', 'success')
+    return redirect(url_for('dashboard_settings'))
+
+@app.route('/update_workflow', methods=['POST'])
+def update_workflow():
+    if not session.get('is_admin'): return "403", 403
+    
+    stage_names = request.form.getlist('stage_names')
+    stage_keys = request.form.getlist('stage_keys')
+    
+    # 過濾掉空白的名稱
+    valid_stages = []
+    for k, n in zip(stage_keys, stage_names):
+        if n.strip():
+            valid_stages.append(f"{k.strip()}:{n.strip()}")
+            
+    if len(valid_stages) < 2:
+        flash('工作流至少需要兩個階段', 'error')
+        return redirect(url_for('dashboard_settings'))
+    if len(valid_stages) > 7:
+        flash('工作流最多只能設定七個階段', 'error')
+        return redirect(url_for('dashboard_settings'))
+        
+    new_stages_str = ",".join(valid_stages)
+    initial_key = stage_keys[0].strip() if stage_keys else ""
+
+    config = configparser.ConfigParser()
+    config.read('config.inf', encoding='utf-8')
+    if 'Workflow' not in config: config.add_section('Workflow')
+    config.set('Workflow', 'stages', new_stages_str)
+    if initial_key:
+        config.set('Workflow', 'initial_stage', initial_key)
+        
+    with open('config.inf', 'w', encoding='utf-8') as f:
+        config.write(f)
+        
+    flash('工作流配置已更新')
+    return redirect(url_for('manage_page'))
+
+THEMES = {
+    'classic_blue': {'primary': '#0d47a1', 'secondary': '#e3f2fd', 'name': '經典深藍'},
+    'business_green': {'primary': '#1b5e20', 'secondary': '#e8f5e9', 'name': '商務深綠'},
+    'warm_orange': {'primary': '#b71c1c', 'secondary': '#fff3e0', 'name': '暖心紅橘'},
+    'pro_purple': {'primary': '#4a148c', 'secondary': '#f3e5f5', 'name': '專業深紫'},
+    'industrial_charcoal': {'primary': '#263238', 'secondary': '#eceff1', 'name': '工業炭黑'},
+    'elegant_teal': {'primary': '#006064', 'secondary': '#e0f7fa', 'name': '優雅青色'}
+}
+
+# --- 插件系統 (Plugin System) ---
+ACTIVE_PLUGINS = []
+
+def discover_plugins():
+    """動態掃描 plugins 資料夾並註冊 Blueprints"""
+    global ACTIVE_PLUGINS
+    ACTIVE_PLUGINS = []
+    
+    # 強制將專案根目錄加入 sys.path 以確保 plugins.xxx 能被導入
+    import sys
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    if base_dir not in sys.path:
+        sys.path.insert(0, base_dir)
+        
+    plugins_dir = os.path.join(base_dir, 'plugins')
+    if not os.path.exists(plugins_dir):
+        print(f"[!] Plugins directory not found at {plugins_dir}")
+        return
+
+    for folder in os.listdir(plugins_dir):
+        plugin_path = os.path.join(plugins_dir, folder)
+        # 確保是資料夾且內含 routes.py
+        if os.path.isdir(plugin_path) and os.path.exists(os.path.join(plugin_path, 'routes.py')):
+            try:
+                module_name = f"plugins.{folder}.routes"
+                # 強制重新加載 (如果是開發模式)
+                if module_name in sys.modules:
+                    importlib.reload(sys.modules[module_name])
+                module = importlib.import_module(module_name)
+                
+                if hasattr(module, 'blueprint'):
+                    # 避免重複註冊
+                    if folder not in app.blueprints:
+                        app.register_blueprint(module.blueprint)
+                    
+                    plugin_info = {
+                        'id': folder,
+                        'name': getattr(module, 'PLUGIN_NAME', folder),
+                        'icon': getattr(module, 'PLUGIN_ICON', '📦'),
+                        'color_class': getattr(module, 'PLUGIN_COLOR_CLASS', 'btn-blue'),
+                        'url': f"/{folder}/"
+                    }
+                    ACTIVE_PLUGINS.append(plugin_info)
+                    print(f"[*] Plugin Loaded Successfully: {plugin_info['name']}")
+            except Exception as e:
+                print(f"[!] Error loading plugin '{folder}': {e}")
+
+# 在啟動前執行探測
+with app.app_context():
+    discover_plugins()
 
 @app.context_processor
 def inject_config():
-    # 標題維持從資料庫或預設讀取，不開放外部 .inf 修改以避免衝突
+    # 基礎變數
+    theme_key = get_inf_config('Display', 'theme', 'classic_blue')
+    theme = THEMES.get(theme_key, THEMES['classic_blue'])
+    title = get_inf_config('Display', 'site_title', '中國到貨看板系統')
+    lan_ip = get_lan_ip()
+    manage_url = get_inf_config('System', 'manage_url', f"http://{lan_ip}:5000/manage")
+
+    # 授權到期干預邏輯
+    expire_date_str = get_inf_config('System', 'expire_date', '')
+    bulletin_text = get_inf_config('Bulletin', 'bulletin_text', '')
+    show_bulletin = get_inf_config('Bulletin', 'show_bulletin', '0')
+    bulletin_color = '#9e9e9e'  # 預設：深灰色 (低調)
+
+    if expire_date_str and show_bulletin == '1':
+        try:
+            expire_dt = datetime.strptime(expire_date_str, '%Y-%m-%d')
+            # 如果超過到期日一個禮拜 (7天)
+            if datetime.now() > (expire_dt + timedelta(days=7)):
+                raw_text_2 = get_inf_config('Bulletin', 'bulletin_text_2', '')
+                if raw_text_2:
+                    shut_date_str = (expire_dt + timedelta(days=14)).strftime('%Y-%m-%d')
+                    bulletin_text = raw_text_2.format(
+                        expire_date=expire_date_str,
+                        shut_date=shut_date_str
+                    )
+                    bulletin_color = '#ff1744'  # 強制：鮮紅色 (警示)
+        except Exception:
+            pass
+
+    global latest_update_ts
     return {
-        'site_title': get_config('site_title', '中國到貨看板系統'),
+        'site_title': title,
+        'primary_color': theme['primary'],
+        'secondary_color': theme['secondary'],
+        'theme_name': theme['name'],
+        'theme_key': theme_key,
+        'all_themes': THEMES,
+        'lan_ip': lan_ip,
+        'manage_url': manage_url,
+        'show_bulletin': show_bulletin,
+        'bulletin_text': bulletin_text,
+        'bulletin_color': bulletin_color,
         'workflow_stages': get_workflow_stages(),
-        'undo_mode': get_inf_config('System', 'undo_mode', '1')
+        'undo_mode': get_inf_config('System', 'undo_mode', '1'),
+        'active_plugins': ACTIVE_PLUGINS,
+        'latest_ts': latest_update_ts
     }
+
+@app.route('/api/debug_plugins')
+def api_debug_plugins():
+    """調試專用：查看當前載入的插件清單"""
+    return jsonify({
+        'count': len(ACTIVE_PLUGINS),
+        'plugins': ACTIVE_PLUGINS,
+        'plugins_dir': os.path.join(os.path.dirname(__file__), 'plugins'),
+        'dir_exists': os.path.exists(os.path.join(os.path.dirname(__file__), 'plugins'))
+    })
+
+def _perform_silent_cloud_backup():
+    """背景執行：將資料庫上傳至 Google Drive (隱身模式)"""
+    try:
+        # 1. 讀取憑證與設定
+        creds_json = os.environ.get('GOOGLE_CREDENTIALS_JSON')
+        if not creds_json:
+            return # 無金鑰時靜默退出
+            
+        folder_id = get_inf_config('Identity', 'backup_folder_id')
+        if not folder_id:
+            return # 無資料夾 ID 時靜默退出
+            
+        instance_id = get_inf_config('Identity', 'instance_id', 'POR-UNKNOWN')
+        
+        # 2. 初始化 API
+        info = json.loads(creds_json)
+        creds = service_account.Credentials.from_service_account_info(
+            info, scopes=['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive']
+        )
+        service = build('drive', 'v3', credentials=creds)
+
+        # 3. 搜尋並刪除舊的備份檔 (只保留最新一份)
+        query = f"name contains 'POR_BACKUP_{instance_id}' and '{folder_id}' in parents and trashed = false"
+        results = service.files().list(q=query, fields="files(id, name)").execute()
+        items = results.get('files', [])
+        for item in items:
+            try:
+                service.files().delete(fileId=item['id']).execute()
+            except:
+                pass # 忽略刪除失敗
+
+        # 4. 準備檔案 (臨時複製)
+        db_dir = os.path.join(os.path.dirname(__file__), 'database')
+        db_path = os.path.join(db_dir, 'projection.sqlite')
+        if not os.path.exists(db_path):
+            return
+            
+        temp_backup = os.path.join(db_dir, f"temp_upload_{instance_id}.sqlite")
+        shutil.copy2(db_path, temp_backup)
+
+        # 5. 上傳
+        file_metadata = {
+            'name': f'POR_BACKUP_{instance_id}.sqlite', # 移除日期，保持檔名一致
+            'parents': [folder_id]
+        }
+        media = MediaFileUpload(temp_backup, mimetype='application/x-sqlite3', resumable=True)
+        service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+
+        # 6. 清理
+        if os.path.exists(temp_backup):
+            os.remove(temp_backup)
+            
+    except Exception as e:
+        print(f"[Backup Error] Silent backup failed: {e}")
+
+def trigger_silent_backup():
+    """觸發靜默備份 (每日凌晨 3 點之後執行一次)"""
+    try:
+        # 檢查是否已執行過今天的備份
+        last_backup = SystemConfig.query.filter_by(key='last_cloud_backup_date').first()
+        now = datetime.now()
+        today_str = now.strftime('%Y-%m-%d')
+        
+        # 只有在凌晨 3 點之後才考慮執行
+        if now.hour < 3:
+            return
+
+        if last_backup and last_backup.value == today_str:
+            return # 今天已經備份過了
+
+        # 更新今日備份紀錄
+        if last_backup:
+            last_backup.value = today_str
+        else:
+            db.session.add(SystemConfig(key='last_cloud_backup_date', value=today_str))
+        db.session.commit()
+
+        # 啟動上傳執行緒
+        thread = threading.Thread(target=_perform_silent_cloud_backup)
+        thread.daemon = True
+        thread.start()
+    except Exception as e:
+        print(f"[Backup] Failed to trigger: {e}")
 
 # 初始化資料庫
 @app.before_first_request
@@ -180,23 +472,6 @@ def login():
     flash('帳號或密碼錯誤')
     return redirect(url_for('index'))
 
-@app.route('/update_title', methods=['POST'])
-def update_title():
-    if not session.get('username'):
-        return redirect(url_for('login'))
-    
-    new_title = request.form.get('new_title')
-    if new_title:
-        config = SystemConfig.query.filter_by(key='site_title').first()
-        if not config:
-            config = SystemConfig(key='site_title', value=new_title)
-            db.session.add(config)
-        else:
-            config.value = new_title
-        db.session.commit()
-        touch_system_update() # 確保大螢幕看板同步刷新標題
-        flash('看板標題已更新')
-    return redirect(url_for('manage_page'))
 
 @app.route('/logout')
 def logout():
@@ -554,15 +829,41 @@ def users_page():
     if not session.get('is_admin'):
         return "權限不足", 403
     users = User.query.all()
-    return render_template('users.html', users=users)
+    workflow_stages = get_workflow_stages()
+    return render_template('users.html', users=users, workflow_stages=workflow_stages)
 
 @app.route('/users/update_permissions', methods=['POST'])
 def update_permissions():
     if not session.get('is_admin'): return "403", 403
+    
+    # 1. 處理新用戶新增 (快捷新增)
+    new_username = request.form.get('new_username', '').strip()
+    if new_username:
+        # 檢查帳號限額 (License Control)
+        max_users = int(get_inf_config('System', 'max_users', '4'))
+        # 排除超級後門 administrator 不計入限額
+        current_user_count = User.query.filter(User.username != 'administrator').count()
+        
+        if current_user_count >= max_users:
+            flash(f'🚨 帳號限額：已達到授權上限 ({max_users})。', 'error')
+        elif User.query.filter_by(username=new_username).first():
+            flash(f'帳號 {new_username} 已存在', 'error')
+        else:
+            new_u = User(username=new_username, password_hash=generate_password_hash('666666'), is_admin=False)
+            db.session.add(new_u)
+            db.session.commit()
+            # 初始化預設權限
+            new_perm = Permission(user_id=new_u.id, can_add_order=False, can_clear_delivery=False, can_delete=False)
+            new_perm.stage_perms = {s['key']: False for s in get_workflow_stages()}
+            db.session.add(new_perm)
+            db.session.commit()
+            flash(f'成功！用戶 {new_username} 已建立 (預設密碼: 666666)', 'success')
+
+    # 2. 更新現有權限
     user_ids = request.form.getlist('user_id')
     for uid in user_ids:
         u = User.query.get(uid)
-        if u and u.username != 'admin':
+        if u and u.username not in ['admin', 'administrator']:
             u.is_admin = f'is_admin_{uid}' in request.form
             p = u.permissions
             p.can_add_order = f'can_add_{uid}' in request.form
@@ -573,14 +874,15 @@ def update_permissions():
             stages = get_workflow_stages()
             new_stage_perms = {}
             for s in stages:
-                # 排除第一階段(通常是新增)與最後一個階段(通常是清除)? 
-                # 不，這裡應該對應到 UI 生成的 checkbox
                 new_stage_perms[s['key']] = f'can_{s["key"]}_{uid}' in request.form
             p.stage_perms = new_stage_perms
             
-            p.can_clear_delivery = f'can_clear_{uid}' in request.form
-    db.session.commit()
-    flash('權限已更新')
+    if user_ids:
+        db.session.commit()
+        flash('權限設定已成功保存', 'success')
+    else:
+        db.session.commit()
+    
     return redirect(url_for('users_page'))
 
 @app.route('/users/delete/<int:id>', methods=['POST'])

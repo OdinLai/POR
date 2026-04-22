@@ -2,11 +2,16 @@
 {% block title %}看板管理系統{% endblock %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; max-width: 1200px; margin: 20px auto; padding: 0 20px;">
-    <h1>{% if mode == 'undo' %}撤銷與修正管理{% else %}進度與庫存管理{% endif %}</h1>
-    
+<div
+    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; max-width: 1200px; margin: 20px auto; padding: 0 20px;">
+    <h1>
+        {% if mode == 'undo' %}撤銷與修正管理{% else %}進度與庫存管理{% endif %}
+        <a href="/admin_home" class="btn-back-main">返回主選單</a>
+    </h1>
+
     <!-- 角色模式切換鈕 (純前端篩選) -->
-    <div style="background: #e9ecef; padding: 5px; border-radius: 30px; display: flex; gap: 5px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
+    <div
+        style="background: #e9ecef; padding: 5px; border-radius: 30px; display: flex; gap: 5px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
         <button id="btn-kanban" onclick="setVisitMode('kanban')" class="mode-btn active">看板模式</button>
         <button id="btn-role" onclick="setVisitMode('role')" class="mode-btn">角色模式</button>
     </div>
@@ -14,18 +19,32 @@
 
 <style>
     .mode-btn {
-        padding: 8px 20px; border-radius: 25px; border: none; cursor: pointer; font-weight: bold;
-        transition: all 0.3s ease; background: transparent; color: #6c757d;
+        padding: 8px 20px;
+        border-radius: 25px;
+        border: none;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        background: transparent;
+        color: #6c757d;
     }
-    .mode-btn.active { background: white; color: #007bff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    
-    .row-hidden { display: none !important; }
+
+    .mode-btn.active {
+        background: white;
+        color: #007bff;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .row-hidden {
+        display: none !important;
+    }
 
     .manage-wrapper {
         max-width: 1200px;
         margin: 20px auto;
         padding: 0 20px;
     }
+
     .config-card {
         background: #f1f8ff;
         border: 1px solid #c8e1ff;
@@ -35,16 +54,27 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
     }
-    .config-card h3 { margin: 0; color: #0056b3; font-size: 1.1rem; }
-    .title-form { display: flex; gap: 10px; }
-    .title-form input { 
-        padding: 8px 15px; 
-        border: 1px solid #d1d9e6; 
-        border-radius: 8px; 
+
+    .config-card h3 {
+        margin: 0;
+        color: #0056b3;
+        font-size: 1.1rem;
+    }
+
+    .title-form {
+        display: flex;
+        gap: 10px;
+    }
+
+    .title-form input {
+        padding: 8px 15px;
+        border: 1px solid #d1d9e6;
+        border-radius: 8px;
         width: 300px;
     }
+
     .data-table {
         width: 100%;
         border-collapse: separate;
@@ -52,8 +82,9 @@
         background: white;
         border-radius: 12px;
         overflow: hidden;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
     }
+
     .data-table th {
         background-color: #f8fbff;
         color: #495057;
@@ -62,13 +93,17 @@
         font-weight: 600;
         border-bottom: 2px solid #e9ecef;
     }
+
     .data-table td {
         padding: 18px 15px;
         border-bottom: 1px solid #f1f3f5;
         vertical-align: middle;
     }
-    .data-table tr:hover { background-color: #fcfdfe; }
-    
+
+    .data-table tr:hover {
+        background-color: #fcfdfe;
+    }
+
     .btn {
         padding: 8px 18px;
         border-radius: 8px;
@@ -81,13 +116,35 @@
         color: white;
         text-decoration: none;
     }
-    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    .btn-save { background-color: #28a745; }
-    .btn-action { background-color: #007bff; }
-    .btn-delete { background-color: #dc3545; }
-    .btn-undo { background-color: #ff9800; }
-    .remark-text { font-size: 0.85rem; color: #868e96; display: block; margin-top: 5px; }
-    
+
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-save {
+        background-color: #28a745;
+    }
+
+    .btn-action {
+        background-color: #007bff;
+    }
+
+    .btn-delete {
+        background-color: #dc3545;
+    }
+
+    .btn-undo {
+        background-color: #ff9800;
+    }
+
+    .remark-text {
+        font-size: 0.85rem;
+        color: #868e96;
+        display: block;
+        margin-top: 5px;
+    }
+
     .btn:disabled {
         background: #f1f3f5 !important;
         color: #ced4da !important;
@@ -96,7 +153,7 @@
         transform: none !important;
         border: 1px solid #dee2e6 !important;
     }
-    
+
     .stage-badge {
         background: #f0f7ff;
         color: #007bff;
@@ -108,15 +165,25 @@
 </style>
 
 <div class="manage-wrapper">
-    {% if session.is_admin %}
-    <div class="config-card">
-        <h3>更新看板標題</h3>
-        <form action="{{ url_for('update_title') }}" method="POST" class="title-form">
-            <input type="text" name="new_title" value="{{ site_title }}" placeholder="請輸入看板標題">
-            <button type="submit" class="btn btn-save">更新看板標題</button>
-        </form>
-    </div>
-    {% endif %}
+    <script>
+        function addStageItem() {
+            const container = document.getElementById('stages-container');
+            const newItem = document.createElement('div');
+            newItem.className = 'stage-item';
+            newItem.style = "background: white; border: 1px solid #ddd; padding: 10px; border-radius: 8px; display: flex; align-items: center; gap: 5px;";
+
+            // 生成隨機 Key (或讓使用者填下一個?) 直接用 TIMESTAMP 為 Key 避免衝突
+            const randomKey = 'STAGE_' + Date.now();
+
+            newItem.innerHTML = `
+                <span style="color: #999; cursor: move;">≡</span>
+                <input type="text" name="stage_names" placeholder="階段名稱" style="width: 80px; padding: 5px; border: 1px solid #eee; border-radius: 4px;">
+                <input type="hidden" name="stage_keys" value="${randomKey}">
+                <button type="button" onclick="this.parentElement.remove()" style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 1.2rem;">×</button>
+            `;
+            container.insertBefore(newItem, container.lastElementChild);
+        }
+    </script>
 
     <h2 style="margin-bottom: 20px; color: #343a40;">當前項目管理</h2>
     <table class="data-table">
@@ -134,39 +201,40 @@
         <tbody>
             {% for item in items %}
             {% set ns = namespace(next_stage_key=none, next_stage_name=none, current_idx=-1) %}
-            
+
             {% for s in workflow_stages %}
-                {% if s.key == item.current_stage %}
-                    {% set ns.current_idx = loop.index0 %}
-                    {% if not loop.last %}
-                        {% set ns.next_stage_key = workflow_stages[loop.index0 + 1].key %}
-                        {% set ns.next_stage_name = workflow_stages[loop.index0 + 1].name %}
-                    {% endif %}
-                {% endif %}
+            {% if s.key == item.current_stage %}
+            {% set ns.current_idx = loop.index0 %}
+            {% if not loop.last %}
+            {% set ns.next_stage_key = workflow_stages[loop.index0 + 1].key %}
+            {% set ns.next_stage_name = workflow_stages[loop.index0 + 1].name %}
+            {% endif %}
+            {% endif %}
             {% endfor %}
 
             {# 權限判定 #}
-            {% set has_move_perm = session.is_admin or (perms.stage_perms.get(item.current_stage) if perms and perms.stage_perms else false) %}
+            {% set has_move_perm = session.is_admin or (perms.stage_perms.get(item.current_stage) if perms and
+            perms.stage_perms else false) %}
             {% set has_clear_perm = session.is_admin or (perms.can_clear_delivery if perms else false) %}
-            
+
             {# 撤回權限判定 #}
             {% set can_undo_this = false %}
             {% if ns.current_idx > 0 %}
-                {% set prev_stage = workflow_stages[ns.current_idx - 1] %}
-                {% if session.is_admin or (undo_mode == '2' and perms.stage_perms.get(prev_stage.key)) %}
-                    {% set can_undo_this = true %}
-                {% endif %}
+            {% set prev_stage = workflow_stages[ns.current_idx - 1] %}
+            {% if session.is_admin or (undo_mode == '2' and perms.stage_perms.get(prev_stage.key)) %}
+            {% set can_undo_this = true %}
+            {% endif %}
             {% endif %}
 
             {# 根據目前模式(Normal/Undo)決定該行是否屬於「角色模式可見」 #}
             {% if mode == 'undo' %}
-                {% set is_active_for_role = can_undo_this %}
+            {% set is_active_for_role = can_undo_this %}
             {% else %}
-                {% if ns.next_stage_key %}
-                    {% set is_active_for_role = has_move_perm %}
-                {% else %}
-                    {% set is_active_for_role = has_clear_perm %}
-                {% endif %}
+            {% if ns.next_stage_key %}
+            {% set is_active_for_role = has_move_perm %}
+            {% else %}
+            {% set is_active_for_role = has_clear_perm %}
+            {% endif %}
             {% endif %}
 
             <tr class="row-item" data-id="{{ item.id }}" data-active="{{ 'true' if is_active_for_role else 'false' }}">
@@ -185,51 +253,54 @@
                             {% if item.remark %}<span class="remark-text">備註: {{ item.remark }}</span>{% endif %}
                         </div>
                         {% if perms.can_add_order or session.is_admin %}
-                        <a href="{{ url_for('edit_item', item_id=item.id) }}" class="btn" style="background: #6c757d; padding: 4px 10px; font-size: 0.8rem; flex-shrink: 0;">修改</a>
+                        <a href="{{ url_for('edit_item', item_id=item.id) }}" class="btn"
+                            style="background: #6c757d; padding: 4px 10px; font-size: 0.8rem; flex-shrink: 0;">修改</a>
                         {% endif %}
                     </div>
                 </td>
                 <td style="text-align: center;">
                     <span class="stage-badge">
                         {% for s in workflow_stages %}
-                            {% if s.key == item.current_stage %}{{ s.name }}{% endif %}
+                        {% if s.key == item.current_stage %}{{ s.name }}{% endif %}
                         {% endfor %}
                     </span>
                 </td>
                 <td style="text-align: center;">
                     {% if mode == 'undo' %}
-                        {% if ns.current_idx > 0 %}
-                            {% set prev_stage = workflow_stages[ns.current_idx - 1] %}
-                            {% if can_undo_this %}
-                                <button onclick="undoItem('{{ item.id }}', '{{ prev_stage.name }}')" class="btn btn-undo">
-                                    撤回至{{ prev_stage.name }}
-                                </button>
-                            {% else %}
-                                <button class="btn" disabled>撤回至{{ prev_stage.name }}</button>
-                            {% endif %}
-                        {% else %}
-                            <span style="color: #adb5bd; font-size: 0.85rem;">初始階段</span>
-                        {% endif %}
+                    {% if ns.current_idx > 0 %}
+                    {% set prev_stage = workflow_stages[ns.current_idx - 1] %}
+                    {% if can_undo_this %}
+                    <button onclick="undoItem('{{ item.id }}', '{{ prev_stage.name }}')" class="btn btn-undo">
+                        撤回至{{ prev_stage.name }}
+                    </button>
                     {% else %}
-                        {% if ns.next_stage_key %}
-                            {% set colors = ['#007bff', '#ffc107', '#17a2b8', '#6610f2', '#fd7e14', '#28a745', '#e83e8c', '#6f42c1', '#198754', '#795548'] %}
-                            {% set btn_color = colors[ns.current_idx % colors|length] %}
-                            {% set text_color = '#333' if btn_color == '#ffc107' else 'white' %}
-                            
-                            {% if has_move_perm %}
-                                <button onclick="transferItem('{{ item.id }}', '{{ ns.next_stage_key }}')" class="btn" style="background: {{ btn_color }}; color: {{ text_color }};">
-                                    轉移至{{ ns.next_stage_name }}
-                                </button>
-                            {% else %}
-                                <button class="btn" disabled>轉移至{{ ns.next_stage_name }}</button>
-                            {% endif %}
-                        {% else %}
-                            {% if has_clear_perm %}
-                                <button onclick="transferItem('{{ item.id }}', 'CLEAR')" class="btn btn-delete">從看板清除</button>
-                            {% else %}
-                                <button class="btn btn-delete" disabled>從看板清除</button>
-                            {% endif %}
-                        {% endif %}
+                    <button class="btn" disabled>撤回至{{ prev_stage.name }}</button>
+                    {% endif %}
+                    {% else %}
+                    <span style="color: #adb5bd; font-size: 0.85rem;">初始階段</span>
+                    {% endif %}
+                    {% else %}
+                    {% if ns.next_stage_key %}
+                    {% set colors = ['#007bff', '#ffc107', '#17a2b8', '#6610f2', '#fd7e14', '#28a745', '#e83e8c',
+                    '#6f42c1', '#198754', '#795548'] %}
+                    {% set btn_color = colors[ns.current_idx % colors|length] %}
+                    {% set text_color = '#333' if btn_color == '#ffc107' else 'white' %}
+
+                    {% if has_move_perm %}
+                    <button onclick="transferItem('{{ item.id }}', '{{ ns.next_stage_key }}')" class="btn"
+                        style="background: {{ btn_color }}; color: {{ text_color }};">
+                        轉移至{{ ns.next_stage_name }}
+                    </button>
+                    {% else %}
+                    <button class="btn" disabled>轉移至{{ ns.next_stage_name }}</button>
+                    {% endif %}
+                    {% else %}
+                    {% if has_clear_perm %}
+                    <button onclick="transferItem('{{ item.id }}', 'CLEAR')" class="btn btn-delete">結束項目</button>
+                    {% else %}
+                    <button class="btn btn-delete" disabled>從看板清除</button>
+                    {% endif %}
+                    {% endif %}
                     {% endif %}
                 </td>
             </tr>
@@ -243,7 +314,7 @@
         const rows = document.querySelectorAll('.row-item');
         const btnKanban = document.getElementById('btn-kanban');
         const btnRole = document.getElementById('btn-role');
-        
+
         if (m === 'role') {
             rows.forEach(row => {
                 if (row.getAttribute('data-active') !== 'true') {
@@ -265,8 +336,8 @@
         if (target === 'CLEAR' && !confirm('是否確定從看板清除？')) return;
         fetch('/api/transfer', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({id: id, target: target})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id, target: target })
         }).then(res => res.json()).then(data => {
             if (data.success) location.reload(); else alert('操作失敗: ' + (data.message || '未知錯誤'));
         });
@@ -276,8 +347,8 @@
         if (!confirm('確定要將此項目「撤回」至 ' + prevStageName + ' 嗎？')) return;
         fetch('/api/undo_transfer', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({id: id})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
         }).then(res => res.json()).then(data => {
             if (data.success) location.reload(); else alert('撤回失敗: ' + (data.message || '未知錯誤'));
         });

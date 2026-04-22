@@ -1,28 +1,31 @@
-; --- 投影看板 系統設定檔 ---
-; 提示：修改後請重啟系統以套用變更
-
 [System]
-
-; 頁面自動重新整理的時間（秒）
 refresh_seconds = 60
-; 撤銷功能模式 (0:關閉, 1:僅管理員, 2:依權限開放)
 undo_mode = 2
-; 手動指定本機 IP (若自動抓取錯誤或在 Docker 內運行時請在此設定，例如 192.168.1.10)
 manual_ip = 
+max_users = 4
+manage_url = http://a0.jadeditedesk.com:5000/manage
+expire_date = 2026-12-31
 
 [Display]
-; 自動捲動一格的間隔時間（毫秒，1000 = 1秒）
+site_title = 中國到貨看板系統
+primary_color = #0d09e1
+secondary_color = #e3f2fd
 scroll_speed_ms = 3000
-
-; 顯示 QRcode 掃描入口 (1 顯示，0 不顯示)
 show_qrcode = 1
-
-;看板表格中日期顯示格式 0 僅日期 1 已停留時間
-
 date_format = 1
+theme = classic_blue
 
 [Workflow]
-; 階段定義：ID:顯示名稱 (以逗號分隔)
-stages = ORDER:訂貨, ARRIVAL:到貨, PRODUCTION:製作, DELIVERY:出庫
-; 初始階段 ID
+stages = ORDER:訂貨,ARRIVAL:到貨,PRODUCTION:製作,DELIVERY:出庫
 initial_stage = ORDER
+
+[Identity]
+instance_id = POR-DEV-BASE
+instance_name = 測試開發實體
+backup_folder_id = 
+
+[Bulletin]
+show_bulletin = 1
+bulletin_text = 歡迎使用璇璣看板管理系統，如欲新增看板或需要客製化，請聯繫青玉案，很榮幸為您服務！service@jadeditedesk.com
+bulletin_text_2 = 本系統授權已於 {expire_date} 到期，將於 {shut_date} 關閉，處理續約請聯繫青玉案。service@jadeditedesk.com
+

@@ -7,7 +7,7 @@ services:
       - "5000:5000"
     volumes:
       - .:/app
-      - ./instance:/app/instance
+      - ./database:/app/database
       - ./config.inf:/app/config.inf
     environment:
       - FLASK_APP=main.py

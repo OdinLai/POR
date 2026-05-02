@@ -1,0 +1,17 @@
+/* 
+   Open Design - Forest Zen Theme
+*/
+:root {
+    --od-bg-color: #121a12;
+    --od-card-bg: #1e2b1e;
+    --od-text-main: #e0f2e0;
+    --od-text-muted: #88a088;
+    --od-accent: #b2ffb2;
+    --od-border: rgba(122, 158, 122, 0.2);
+    --od-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    --od-radius: 20px;
+    --od-header-bg: #0d140d;
+    --od-glow: rgba(178, 255, 178, 0.2);
+    --od-item-num-bg: #7a9e7a;
+    --od-item-num-color: #121a12;
+}

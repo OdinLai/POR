@@ -1,0 +1,22 @@
+/* 
+   Open Design - Linear App Theme
+*/
+:root {
+    --od-bg-color: #0c0c0e;
+    --od-card-bg: #161618;
+    --od-text-main: #f2f2f2;
+    --od-text-muted: #8a8a8e;
+    --od-accent: #5e6ad2;
+    --od-border: #2a2a2c;
+    --od-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    --od-radius: 6px;
+    --od-header-bg: #0c0c0e;
+    --od-glow: rgba(94, 106, 210, 0.3);
+    --od-item-num-bg: #5e6ad2;
+    --od-item-num-color: #ffffff;
+    --od-font: 'Inter', system-ui, sans-serif;
+}
+
+.cabinet {
+    font-weight: 400 !important;
+}

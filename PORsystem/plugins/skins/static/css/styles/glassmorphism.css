@@ -1,0 +1,23 @@
+/* 
+   Open Design - Glassmorphism Theme
+*/
+:root {
+    --od-bg-color: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    --od-card-bg: rgba(255, 255, 255, 0.1);
+    --od-text-main: #ffffff;
+    --od-text-muted: rgba(255, 255, 255, 0.6);
+    --od-accent: #4ecca3;
+    --od-border: rgba(255, 255, 255, 0.2);
+    --od-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    --od-radius: 16px;
+    --od-header-bg: rgba(15, 52, 96, 0.8);
+    --od-glow: rgba(78, 204, 163, 0.4);
+    --od-item-num-bg: #e94560;
+    --od-item-num-color: #ffffff;
+}
+
+.item-content {
+    backdrop-filter: blur(16px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+}

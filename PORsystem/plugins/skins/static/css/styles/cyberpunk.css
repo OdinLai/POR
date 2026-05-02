@@ -1,0 +1,29 @@
+/* 
+   Open Design - Cyberpunk Theme
+*/
+:root {
+    --od-bg-color: #050505;
+    --od-card-bg: rgba(20, 20, 20, 0.85);
+    --od-text-main: #00f3ff;
+    --od-text-muted: rgba(0, 243, 255, 0.6);
+    --od-accent: #00f3ff;
+    --od-border: #00f3ff;
+    --od-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+    --od-radius: 2px; /* 稜角感 */
+    --od-header-bg: #111;
+    --od-glow: #00f3ff;
+    --od-item-num-bg: #ffff00;
+    --od-item-num-color: #000;
+    --od-font: 'Courier New', Courier, monospace;
+}
+
+body {
+    background-image: 
+        linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px) !important;
+    background-size: 20px 20px !important;
+}
+
+.item-content {
+    border-left: 4px solid var(--od-accent) !important;
+}

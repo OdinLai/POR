@@ -1,0 +1,22 @@
+/* 
+   Open Design - Paper White Theme
+*/
+:root {
+    --od-bg-color: #ffffff;
+    --od-card-bg: #ffffff;
+    --od-text-main: #1a1a1a;
+    --od-text-muted: #666666;
+    --od-accent: #000000;
+    --od-border: #dddddd;
+    --od-shadow: 2px 2px 5px rgba(0, 0, 0, 0.05);
+    --od-radius: 0px;
+    --od-header-bg: #f8f9fa;
+    --od-glow: transparent;
+    --od-item-num-bg: #333333;
+    --od-item-num-color: #ffffff;
+    --od-font: 'Helvetica', 'Arial', sans-serif;
+}
+
+.remark {
+    color: #d32f2f !important; /* 特殊紅色備註 */
+}

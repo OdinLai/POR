@@ -187,8 +187,8 @@
     </style>
     <!-- Open Design 插件樣式注入 (自動感應模式) -->
     {% for plugin in active_plugins %}
-        {% if plugin.id == 'od_skin' %}
-        <link rel="stylesheet" href="/od_skin/style.css?v={{ latest_ts }}">
+        {% if plugin.id == 'skins' %}
+        <link rel="stylesheet" href="/skins/style.css?v={{ latest_ts }}">
         {% endif %}
     {% endfor %}
 </head>

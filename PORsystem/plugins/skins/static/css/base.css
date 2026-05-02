@@ -1,0 +1,129 @@
+/* 
+   Open Design - Base Framework
+   瑪雅開發備忘：這是所有主題的基礎框架，負責佈局與共通邏輯。
+   所有主題文件 (.css) 應僅定義變數與特殊覆寫。
+*/
+
+:root {
+    /* 預設 Design Tokens - 會被各主題文件覆蓋 */
+    --od-bg-color: #f4f4f4;
+    --od-card-bg: #ffffff;
+    --od-text-main: #222222;
+    --od-text-muted: #666666;
+    --od-accent: #1a73e8;
+    --od-border: rgba(0, 0, 0, 0.1);
+    --od-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    --od-radius: 8px;
+    --od-font: 'Microsoft JhengHei', 'Segoe UI', system-ui, sans-serif;
+    --od-header-bg: #f8f9fa;
+    --od-glow: transparent;
+    --od-item-num-bg: #f57c00;
+    --od-item-num-color: #ffffff;
+}
+
+/* 1. 全域沉浸式背景：覆蓋所有空隙 */
+body, 
+.main-container, 
+.scroll-wrapper, 
+#scroll-container {
+    background: var(--od-bg-color) !important;
+    color: var(--od-text-main) !important;
+    font-family: var(--od-font) !important;
+    margin: 0;
+    transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* 2. 主標題優化 */
+h1 {
+    background: var(--od-header-bg) !important;
+    color: var(--od-accent) !important;
+    border-bottom: 3px solid var(--od-accent) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+    font-weight: 800 !important;
+    letter-spacing: 2px !important;
+}
+
+.header-date {
+    color: var(--od-accent) !important;
+    opacity: 0.8;
+}
+
+/* 3. 表格標頭與網格線 */
+.table-header {
+    background: var(--od-card-bg) !important;
+    border-bottom: 2px solid var(--od-border) !important;
+    opacity: 0.95;
+}
+
+.col-header {
+    color: var(--od-accent) !important;
+    border-right: 1px solid var(--od-border) !important;
+}
+
+.row {
+    background: transparent !important;
+    border-bottom: 1px solid var(--od-border) !important;
+}
+
+.cell {
+    background: transparent !important;
+    border-right: 1px solid var(--od-border) !important;
+}
+
+/* 4. 核心卡片組件 (Item Content) */
+.item-content {
+    background: var(--od-card-bg) !important;
+    border: 1px solid var(--od-border) !important;
+    border-radius: var(--od-radius) !important;
+    box-shadow: var(--od-shadow) !important;
+    padding: 10px !important;
+    margin: 4px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    transition: all 0.3s ease !important;
+    box-sizing: border-box !important;
+    backdrop-filter: blur(5px); /* 預設輕微毛玻璃 */
+}
+
+/* 5. 項目編號與標章 */
+.serial-no {
+    color: var(--od-item-num-color) !important;
+    background: var(--od-item-num-bg) !important;
+    padding: 2px 8px !important;
+    border-radius: 4px !important;
+    font-weight: 900 !important;
+    text-shadow: none !important;
+}
+
+.date-badge {
+    color: var(--od-accent) !important;
+    font-weight: bold !important;
+}
+
+/* 6. 櫃位與備註 */
+.cabinet {
+    color: var(--od-accent) !important;
+    text-shadow: 0 0 10px var(--od-glow);
+}
+
+.remark {
+    color: var(--od-text-muted) !important;
+    font-weight: 500 !important;
+}
+
+/* 7. 空行優化：保持沉浸感 */
+.empty-row {
+    opacity: 0.2;
+}
+
+/* 8. 特殊效果：發光動畫 */
+@keyframes od-pulse {
+    0% { box-shadow: 0 0 5px var(--od-accent); }
+    50% { box-shadow: 0 0 20px var(--od-accent); }
+    100% { box-shadow: 0 0 5px var(--od-accent); }
+}
+
+.od-glow-effect {
+    animation: od-pulse 2s infinite;
+}

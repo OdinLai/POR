@@ -1,0 +1,84 @@
+/* 
+   Open Design - Linear App Style for POR Signboard
+   Target: /show page
+*/
+
+:root {
+    --bg-main: #0c0c0e;
+    --card-bg: #161618;
+    --border-dim: #2a2a2c;
+    --accent-purple: #5e6ad2;
+    --text-dim: #8a8a8e;
+    --text-bright: #f2f2f2;
+}
+
+body {
+    background: var(--bg-main) !important;
+    color: var(--text-bright) !important;
+    font-family: 'Inter', 'Microsoft JhengHei', sans-serif !important;
+}
+
+h1 {
+    background: var(--bg-main) !important;
+    border-bottom: 1px solid var(--border-dim) !important;
+    font-size: 2rem !important;
+    font-weight: 400 !important;
+    color: var(--text-bright) !important;
+}
+
+.table-header {
+    background: var(--card-bg) !important;
+    border-bottom: 1px solid var(--accent-purple) !important;
+}
+
+.col-header {
+    color: var(--text-dim) !important;
+    font-weight: 500 !important;
+    font-size: 1.2rem !important;
+}
+
+.row {
+    background: var(--bg-main) !important;
+    border-bottom: 1px solid var(--border-dim) !important;
+}
+
+.cell {
+    border-right: 1px solid var(--border-dim) !important;
+}
+
+.main-container, .scroll-wrapper, #scroll-container {
+    background: var(--bg-main) !important;
+}
+
+.row {
+    background: var(--bg-main) !important;
+    border-bottom: 1px solid var(--border-dim) !important;
+}
+
+.cell {
+    background: var(--bg-main) !important;
+    border-right: 1px solid var(--border-dim) !important;
+}
+
+.item-content {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-dim) !important;
+    border-radius: 6px !important;
+    padding: 10px !important;
+}
+
+.date-badge {
+    color: var(--text-dim) !important;
+    background: transparent !important;
+    font-size: 1rem !important;
+}
+
+.cabinet {
+    color: var(--text-bright) !important;
+    font-size: 1.8rem !important;
+}
+
+.remark {
+    color: var(--accent-purple) !important;
+    font-size: 0.9rem !important;
+}

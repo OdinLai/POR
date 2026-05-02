@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>插件狀態 - 看板密碼鎖</title>
+    <style>
+        body { 
+            font-family: 'Microsoft JhengHei', sans-serif; 
+            background: #f0f2f5; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        .status-card { 
+            background: white; 
+            padding: 2.5rem; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+            width: 100%; 
+            max-width: 450px; 
+            text-align: center; 
+        }
+        .plugin-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+        h1 { 
+            color: #1a73e8; 
+            margin-bottom: 1rem; 
+            font-size: 1.8rem;
+        }
+        .status-box {
+            background: #e8f0fe;
+            border-left: 5px solid #1a73e8;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+            text-align: left;
+        }
+        .status-label {
+            color: #5f6368;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        .status-value {
+            color: #202124;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        /* 滑動開關樣式 */
+        .switch-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: #fff;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+        }
+        .switch-label {
+            font-weight: bold;
+            color: #3c4043;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        .switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #1a73e8;
+        }
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+        /* 警告訊息 */
+        .warning-msg {
+            color: #d93025;
+            background: #fce8e6;
+            padding: 0.8rem;
+            border-radius: 4px;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            font-weight: bold;
+            display: none;
+            border: 1px solid #d93025;
+        }
+        .back-btn { 
+            display: inline-block;
+            width: 100%; 
+            padding: 14px; 
+            background: #f1f3f4; 
+            color: #3c4043; 
+            text-decoration: none;
+            border-radius: 8px; 
+            font-size: 1rem; 
+            transition: background 0.3s; 
+            margin-top: 1rem; 
+            font-weight: bold;
+            box-sizing: border-box;
+        }
+        .back-btn:hover { 
+            background: #e8eaed; 
+        }
+        .hint {
+            color: #70757a;
+            font-size: 0.85rem;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="status-card">
+        <span class="plugin-icon">🔒</span>
+        <h1>看板密碼鎖</h1>
+        
+        <div class="status-box">
+            <span class="status-label">目前運行狀態</span>
+            <span class="status-value">{{ status_text }}</span>
+        </div>
+
+        <div class="switch-container">
+            <span class="switch-label">啟用插件功能</span>
+            <label class="switch">
+                <input type="checkbox" id="pluginToggle" {% if is_enabled %}checked{% endif %}>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div id="warningBox" class="warning-msg" {% if not is_enabled %}style="display: block;"{% endif %}>
+            ⚠️ 關閉看板鎖可能會讓未經授權者瀏覽看板內容
+        </div>
+
+        <a href="/admin_home" class="back-btn">返回主選單</a>
+
+        <p class="hint">※ 模式變更仍需手動修改配置文件。</p>
+    </div>
+
+    <script>
+        const toggle = document.getElementById('pluginToggle');
+        const warningBox = document.getElementById('warningBox');
+
+        toggle.addEventListener('change', function() {
+            const isEnabled = this.checked;
+            
+            // 顯示/隱藏警告訊息
+            if (isEnabled) {
+                warningBox.style.display = 'none';
+            } else {
+                warningBox.style.display = 'block';
+            }
+
+            // 發送請求更新設定
+            fetch('/screen_lock/toggle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'enabled=' + isEnabled
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    alert('設定更新失敗，請檢查系統日誌。');
+                    this.checked = !isEnabled; // 回滾
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('網路連線錯誤。');
+                this.checked = !isEnabled; // 回滾
+            });
+        });
+    </script>
+</body>
+</html>

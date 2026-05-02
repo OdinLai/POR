@@ -3,7 +3,7 @@ refresh_seconds = 60
 undo_mode = 2
 manual_ip = 
 max_users = 4
-manage_url = http://a0.jadeditedesk.com:5000/manage
+manage_url = http://a0.jadeitedesk.com/manage
 expire_date = 2026-12-31
 
 [Display]
@@ -13,7 +13,8 @@ secondary_color = #e3f2fd
 scroll_speed_ms = 3000
 show_qrcode = 1
 date_format = 1
-theme = classic_blue
+zoom_factor = 1.0
+theme = warm_orange
 
 [Workflow]
 stages = ORDER:訂貨,ARRIVAL:到貨,PRODUCTION:製作,DELIVERY:出庫
@@ -26,6 +27,6 @@ backup_folder_id =
 
 [Bulletin]
 show_bulletin = 1
-bulletin_text = 歡迎使用璇璣看板管理系統，如欲新增看板或需要客製化，請聯繫青玉案，很榮幸為您服務！service@jadeditedesk.com
-bulletin_text_2 = 本系統授權已於 {expire_date} 到期，將於 {shut_date} 關閉，處理續約請聯繫青玉案。service@jadeditedesk.com
+bulletin_text = 歡迎使用璇璣看板管理系統，如欲新增看板或客製化看板，請聯繫青玉案，很榮幸為您服務！service@jadeitedesk.com
+bulletin_text_2 = 本系統授權已於 {expire_date} 到期，將於 {shut_date} 關閉，處理續約請聯繫青玉案。service@jadeitedesk.com
 

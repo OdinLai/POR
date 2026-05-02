@@ -7,12 +7,7 @@ import importlib
 from sqlalchemy import func
 import configparser
 import requests
-import shutil
-import threading
-import json
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+
 
 app = Flask(__name__)
 # 確保資料庫資料夾存在
@@ -143,7 +138,7 @@ def touch_system_update():
     global latest_update_ts
     latest_update_ts = int(float(now_str))
     
-    trigger_silent_backup()
+
 
 @app.route('/dashboard_settings')
 def dashboard_settings():
@@ -154,11 +149,16 @@ def dashboard_settings():
     workflow_stages = get_workflow_stages()
     primary_color = get_inf_config('Display', 'primary_color', '#007bff')
     site_title = get_inf_config('Display', 'site_title', 'POR 投影看板系統')
+    date_format = get_inf_config('Display', 'date_format', '0')
+    theme_key = get_inf_config('Display', 'theme', 'classic_blue')
     
     return render_template('dashboard_settings.html', 
                            workflow_stages=workflow_stages,
                            primary_color=primary_color,
-                           site_title=site_title)
+                           site_title=site_title,
+                           date_format=date_format,
+                           theme_key=theme_key,
+                           all_themes=THEMES)
 
 @app.route('/update_title', methods=['POST'])
 def update_title():
@@ -172,7 +172,24 @@ def update_title():
         with open('config.inf', 'w', encoding='utf-8') as f:
             config.write(f)
         flash(f'看板標題已更新')
-    return redirect(url_for('manage_page'))
+    return redirect(url_for('dashboard_settings'))
+
+@app.route('/update_date_format', methods=['POST'])
+def update_date_format():
+    if not session.get('is_admin'): return "403", 403
+    mode = request.form.get('date_format', '0')
+    
+    config = configparser.ConfigParser()
+    config.read('config.inf', encoding='utf-8')
+    if 'Display' not in config: config.add_section('Display')
+    config.set('Display', 'date_format', mode)
+    
+    with open('config.inf', 'w', encoding='utf-8') as f:
+        config.write(f)
+    
+    touch_system_update()
+    flash('時間顯示模式已切換')
+    return redirect(url_for('dashboard_settings'))
 
 @app.route('/update_theme', methods=['POST'])
 def update_theme():
@@ -296,6 +313,7 @@ def inject_config():
     title = get_inf_config('Display', 'site_title', '中國到貨看板系統')
     lan_ip = get_lan_ip()
     manage_url = get_inf_config('System', 'manage_url', f"http://{lan_ip}:5000/manage")
+    zoom_factor = get_inf_config('Display', 'zoom_factor', '1.0')
 
     # 授權到期干預邏輯
     expire_date_str = get_inf_config('System', 'expire_date', '')
@@ -335,7 +353,8 @@ def inject_config():
         'workflow_stages': get_workflow_stages(),
         'undo_mode': get_inf_config('System', 'undo_mode', '1'),
         'active_plugins': ACTIVE_PLUGINS,
-        'latest_ts': latest_update_ts
+        'latest_ts': latest_update_ts,
+        'zoom_factor': zoom_factor
     }
 
 @app.route('/api/debug_plugins')
@@ -348,89 +367,7 @@ def api_debug_plugins():
         'dir_exists': os.path.exists(os.path.join(os.path.dirname(__file__), 'plugins'))
     })
 
-def _perform_silent_cloud_backup():
-    """背景執行：將資料庫上傳至 Google Drive (隱身模式)"""
-    try:
-        # 1. 讀取憑證與設定
-        creds_json = os.environ.get('GOOGLE_CREDENTIALS_JSON')
-        if not creds_json:
-            return # 無金鑰時靜默退出
-            
-        folder_id = get_inf_config('Identity', 'backup_folder_id')
-        if not folder_id:
-            return # 無資料夾 ID 時靜默退出
-            
-        instance_id = get_inf_config('Identity', 'instance_id', 'POR-UNKNOWN')
-        
-        # 2. 初始化 API
-        info = json.loads(creds_json)
-        creds = service_account.Credentials.from_service_account_info(
-            info, scopes=['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive']
-        )
-        service = build('drive', 'v3', credentials=creds)
 
-        # 3. 搜尋並刪除舊的備份檔 (只保留最新一份)
-        query = f"name contains 'POR_BACKUP_{instance_id}' and '{folder_id}' in parents and trashed = false"
-        results = service.files().list(q=query, fields="files(id, name)").execute()
-        items = results.get('files', [])
-        for item in items:
-            try:
-                service.files().delete(fileId=item['id']).execute()
-            except:
-                pass # 忽略刪除失敗
-
-        # 4. 準備檔案 (臨時複製)
-        db_dir = os.path.join(os.path.dirname(__file__), 'database')
-        db_path = os.path.join(db_dir, 'projection.sqlite')
-        if not os.path.exists(db_path):
-            return
-            
-        temp_backup = os.path.join(db_dir, f"temp_upload_{instance_id}.sqlite")
-        shutil.copy2(db_path, temp_backup)
-
-        # 5. 上傳
-        file_metadata = {
-            'name': f'POR_BACKUP_{instance_id}.sqlite', # 移除日期，保持檔名一致
-            'parents': [folder_id]
-        }
-        media = MediaFileUpload(temp_backup, mimetype='application/x-sqlite3', resumable=True)
-        service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-
-        # 6. 清理
-        if os.path.exists(temp_backup):
-            os.remove(temp_backup)
-            
-    except Exception as e:
-        print(f"[Backup Error] Silent backup failed: {e}")
-
-def trigger_silent_backup():
-    """觸發靜默備份 (每日凌晨 3 點之後執行一次)"""
-    try:
-        # 檢查是否已執行過今天的備份
-        last_backup = SystemConfig.query.filter_by(key='last_cloud_backup_date').first()
-        now = datetime.now()
-        today_str = now.strftime('%Y-%m-%d')
-        
-        # 只有在凌晨 3 點之後才考慮執行
-        if now.hour < 3:
-            return
-
-        if last_backup and last_backup.value == today_str:
-            return # 今天已經備份過了
-
-        # 更新今日備份紀錄
-        if last_backup:
-            last_backup.value = today_str
-        else:
-            db.session.add(SystemConfig(key='last_cloud_backup_date', value=today_str))
-        db.session.commit()
-
-        # 啟動上傳執行緒
-        thread = threading.Thread(target=_perform_silent_cloud_backup)
-        thread.daemon = True
-        thread.start()
-    except Exception as e:
-        print(f"[Backup] Failed to trigger: {e}")
 
 # 初始化資料庫
 @app.before_first_request
@@ -803,9 +740,10 @@ def all_data():
         for s in stages:
             dt_str = dates_obj.get(s['key'])
             if dt_str:
-                # 兼容格式
+                user_val = ""
                 if isinstance(dt_str, dict):
                     dt_val = dt_str.get('date', '-')
+                    user_val = dt_str.get('user', '')
                 else:
                     dt_val = dt_str
                 
@@ -814,7 +752,13 @@ def all_data():
                 except:
                     display_time = dt_val
                 
-                p_item['history'].append({'name': s['name'], 'val': display_time})
+                # 如果有操作者資訊，則附加在時間後方
+                final_display = display_time
+                if user_val:
+                    final_display = f"{display_time} ({user_val})"
+                
+                p_item['history'].append({'name': s['name'], 'val': final_display})
+
             else:
                 p_item['history'].append({'name': s['name'], 'val': '-'})
             

@@ -42,15 +42,17 @@
     </a>
     {% endif %}
 
-    {% for plugin in active_plugins %}
-    <a href="{{ plugin.url }}" class="big-button {{ plugin.color_class }}">
-        {{ plugin.icon }} {{ plugin.name }}
-    </a>
-    {% endfor %}
-
     <a href="/change_password" class="big-button btn-yellow">
         修改密碼
     </a>
+
+    {% if session.is_admin %}
+        {% for plugin in active_plugins %}
+        <a href="{{ plugin.url }}" class="big-button {{ plugin.color_class }}">
+            <span class="plugin-icon">{{ plugin.icon }}</span> {{ plugin.name }}
+        </a>
+        {% endfor %}
+    {% endif %}
     
     {# 移除手機端不必要的開啟看板按鈕 #}
 </div>

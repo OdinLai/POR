@@ -115,6 +115,43 @@
             color: white;
         }
 
+        .btn-bronze {
+            background: linear-gradient(145deg, #cd7f32 0%, #a0522d 50%, #5c3a1a 100%);
+            border: 1px solid #7c5a30;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 2px 5px rgba(255,255,255,0.3);
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 增加一個光澤掃過的效果 */
+        .btn-bronze::after {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            animation: shine 5s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) rotate(45deg); }
+        }
+
+        /* 讓 Emoji 圖標變為明亮的金色/黃色，與紅色按鈕形成強烈對比 */
+        .plugin-icon {
+            display: inline-block;
+            filter: grayscale(1) brightness(2) sepia(1) hue-rotate(5deg) saturate(20) drop-shadow(0 0 2px rgba(0,0,0,0.5));
+            transform: scale(1.2);
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
         .btn-back-main {
             background: #6c757d;
             color: white;

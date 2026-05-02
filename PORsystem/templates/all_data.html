@@ -20,10 +20,11 @@
         
         <div style="font-size: 0.85rem; color: #666; background: #f8f9fa; padding: 10px; border-radius: 8px;">
             {% for h in item.history %}
-            <div style="margin-bottom: 5px; display: flex; align-items: center;">
-                <span style="font-weight: bold; color: #555; white-space: nowrap;">{{ h.name }}:</span>
-                <span style="font-family: monospace; flex-grow: 1; text-align: {{ 'center' if h.val == '-' else 'right' }};">{{ h.val }}</span>
+            <div style="margin-bottom: 5px; display: flex; align-items: baseline; flex-wrap: wrap;">
+                <span style="font-weight: bold; color: #555; white-space: nowrap; margin-right: 8px;">{{ h.name }}:</span>
+                <span style="font-family: monospace; flex-grow: 1; text-align: right; color: #333;">{{ h.val }}</span>
             </div>
+
             {% endfor %}
         </div>
     </div>

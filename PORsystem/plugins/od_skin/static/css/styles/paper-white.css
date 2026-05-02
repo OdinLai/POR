@@ -1,0 +1,64 @@
+/* 
+   Open Design - Paper White Style
+*/
+:root {
+    --bg-white: #ffffff;
+    --text-black: #1a1a1a;
+    --border-gray: #dddddd;
+    --accent-red: #d32f2f;
+}
+
+body {
+    background: var(--bg-white) !important;
+    color: var(--text-black) !important;
+    font-family: 'Helvetica', sans-serif !important;
+}
+
+h1 {
+    background: #f8f9fa !important;
+    color: var(--text-black) !important;
+    border-bottom: 2px solid var(--text-black) !important;
+}
+
+.table-header {
+    background: #eeeeee !important;
+    border-bottom: 2px solid #333 !important;
+}
+
+.col-header {
+    color: #333 !important;
+}
+
+.main-container, .scroll-wrapper, #scroll-container {
+    background: var(--bg-white) !important;
+}
+
+.row {
+    background: var(--bg-white) !important;
+    border-bottom: 1px solid var(--border-gray) !important;
+}
+
+.cell {
+    background: var(--bg-white) !important;
+    border-right: 1px solid var(--border-gray) !important;
+}
+
+.item-content {
+    background: #fff !important;
+    border: 1px solid var(--border-gray) !important;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.05) !important;
+}
+
+.cabinet {
+    color: var(--text-black) !important;
+    font-weight: 800 !important;
+}
+
+.remark {
+    color: var(--accent-red) !important;
+}
+
+.serial-no {
+    color: #fff !important;
+    background: #333 !important;
+}

@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-lg border-0">
+        <div class="card-header bg-purple text-white p-4">
+            <h2 class="mb-0">🎨 Open Design 視覺切換</h2>
+            <p class="mb-0 opacity-75">利用專業設計系統優化您的看板外觀</p>
+        </div>
+        <div class="card-body p-5">
+            <form action="{{ url_for('od_skin.update_style') }}" method="POST">
+                <div class="row">
+                    {% for style in available_styles %}
+                    <div class="col-md-6 mb-4">
+                        <div class="style-card p-4 border rounded-3 {% if style == current_style %}border-primary bg-light shadow-sm{% endif %}" 
+                             onclick="this.querySelector('input').click()" style="cursor: pointer; transition: all 0.3s;">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="style" id="style_{{ style }}" value="{{ style }}" 
+                                       {% if style == current_style %}checked{% endif %}>
+                                <label class="form-check-label h4" for="style_{{ style }}">
+                                    {% if style == 'classic' %}🏛️ 經典原始
+                                    {% elif style == 'glassmorphism' %}✨ 玻璃擬態
+                                    {% elif style == 'linear-app' %}🌑 科技炭黑
+                                    {% elif style == 'cyberpunk' %}🌃 賽博霓虹
+                                    {% elif style == 'midnight-gold' %}🏆 午夜金韻
+                                    {% elif style == 'forest-zen' %}🌲 森系靜謐
+                                    {% elif style == 'paper-white' %}📄 簡約紙白
+                                    {% else %}{{ style|capitalize }}
+                                    {% endif %}
+                                </label>
+                            </div>
+                            <p class="text-muted mt-2">
+                                {% if style == 'classic' %}
+                                恢復系統最初的藍色風格，不進行任何樣式覆蓋。
+                                {% elif style == 'glassmorphism' %}
+                                現代透明質感、霓虹金字發光，最具視覺衝擊力。
+                                {% elif style == 'linear-app' %}
+                                炭黑科技感、紫色點綴，高對比度適合精準作業。
+                                {% elif style == 'cyberpunk' %}
+                                賽博極客風格，螢光粉與藍的激烈碰撞。
+                                {% elif style == 'midnight-gold' %}
+                                深藍底配奢華金，呈現沈穩且高級的商務質感。
+                                {% elif style == 'forest-zen' %}
+                                深墨綠配薄荷色，視覺壓力最低，適合長期監看。
+                                {% elif style == 'paper-white' %}
+                                極簡高亮風格，黑白分明，適合環境明亮的場域。
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mt-4 text-center">
+                    <button type="submit" class="btn btn-primary btn-lg px-5" 
+                            onclick="setTimeout(() => { window.location.href='/show'; }, 200);">套用風格</button>
+                    <a href="{{ url_for('admin_home') }}" class="btn btn-outline-secondary btn-lg px-5">返回</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-purple { background-color: #6f42c1; }
+    .style-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+    .border-primary { border-width: 3px !important; }
+</style>
+{% endblock %}

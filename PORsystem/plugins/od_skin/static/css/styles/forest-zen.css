@@ -1,0 +1,62 @@
+/* 
+   Open Design - Forest Zen Style
+*/
+:root {
+    --bg-forest: #121a12;
+    --mint: #b2ffb2;
+    --sage: #7a9e7a;
+    --card-bg: #1e2b1e;
+}
+
+body {
+    background: var(--bg-forest) !important;
+    color: #e0f2e0 !important;
+    font-family: 'Segoe UI', sans-serif !important;
+}
+
+h1 {
+    background: #0d140d !important;
+    color: var(--mint) !important;
+    border-bottom: 2px solid var(--sage) !important;
+}
+
+.table-header {
+    background: var(--card-bg) !important;
+}
+
+.col-header {
+    color: var(--sage) !important;
+}
+
+.main-container, .scroll-wrapper, #scroll-container {
+    background: var(--bg-forest) !important;
+}
+
+.row {
+    background: var(--bg-forest) !important;
+    border-bottom: 1px solid rgba(122, 158, 122, 0.1) !important;
+}
+
+.cell {
+    background: var(--bg-forest) !important;
+    border-right: 1px solid rgba(122, 158, 122, 0.1) !important;
+}
+
+.item-content {
+    background: var(--card-bg) !important;
+    border: 1px solid #2d3d2d !important;
+    border-radius: 20px !important; /* 圓潤感 */
+}
+
+.cabinet {
+    color: var(--mint) !important;
+}
+
+.remark {
+    color: #88a088 !important;
+}
+
+.serial-no {
+    color: #121a12 !important;
+    background: var(--mint) !important;
+}
